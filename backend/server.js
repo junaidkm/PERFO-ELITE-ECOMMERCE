@@ -1,12 +1,19 @@
 require("dotenv").config();
 const cors = require("cors");
+const cookieParser = require("cookie-parser");
 
 const express = require("express");
 const connectDB = require("./config/db");
 
 const app = express();
 
-app.use(cors());
+app.use(
+  cors({
+    origin: process.env.CLIENT_URL || "http://localhost:5173",
+    credentials: true, // Allow cookies to be sent/received cross-origin
+  })
+);
+app.use(cookieParser()); // Parse incoming cookies
 connectDB();
 
 app.use(express.json());

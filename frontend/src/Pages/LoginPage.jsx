@@ -23,7 +23,7 @@ function LoginPage() {
     try {
       const { data } = await api.post("/auth/login", { email, password })
       toast.success("Login Successful")
-      login(data.user.id, data.token)
+      login(data.user.id)  // Token is set in httpOnly cookie by the server
       setTimeout(() => { navigate(data.user.role === "admin" ? "/admin" : "/") }, 500)
     } catch (err) {
       console.error(err)

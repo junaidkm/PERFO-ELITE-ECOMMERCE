@@ -6,6 +6,8 @@ export const AuthContext = createContext()
 
 export const AuthProvider = ({ children }) => {
 
+  // userId is stored in localStorage so the profile can be refetched on page reload.
+  // The actual JWT token lives in a secure httpOnly cookie — never accessible to JS.
   const [userId, setUserId] = useState(
     () => localStorage.getItem("userId")
   )
@@ -19,22 +21,21 @@ export const AuthProvider = ({ children }) => {
     }
   }, [userId])
 
-  const login = (id, token) => {
+  // Called after a successful login/register — token is already in the httpOnly cookie
+  const login = (id) => {
     localStorage.setItem("userId", id)
-    localStorage.setItem("token", token)
     setUserId(id)
   }
 
   const logout = async () => {
     try {
       if (userId) {
-        await api.post("/auth/logout")
+        await api.post("/auth/logout") // Backend clears the httpOnly cookie
       }
     } catch (err) {
       console.error("Logout error:", err)
     } finally {
       localStorage.removeItem("userId")
-      localStorage.removeItem("token")
       setUserId(null)
       setUser(null)
     }
@@ -51,7 +52,6 @@ export const AuthProvider = ({ children }) => {
         console.log(err)
         if (err.response?.status === 401 || err.response?.status === 403) {
           localStorage.removeItem("userId")
-          localStorage.removeItem("token")
           setUserId(null)
           setUser(null)
         }

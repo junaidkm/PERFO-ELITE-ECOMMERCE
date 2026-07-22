@@ -1,6 +1,14 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 
+// Secure cookie options
+const COOKIE_OPTIONS = {
+  httpOnly: true,                               // Not accessible via JavaScript
+  secure: process.env.NODE_ENV === "production", // HTTPS only in production
+  sameSite: "lax",                              // CSRF protection
+  maxAge: 30 * 24 * 60 * 60 * 1000,            // 30 days in milliseconds
+};
+
 // Helper to generate JWT token
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET || "default_jwt_secret_key_123", {
@@ -37,8 +45,10 @@ const registerUser = async (req, res) => {
 
     await user.save();
 
+    // Set JWT as a secure httpOnly cookie
+    res.cookie("token", generateToken(user._id), COOKIE_OPTIONS);
+
     return res.status(201).json({
-      token: generateToken(user._id),
       user: {
         id: user.id,
         name: user.name,
@@ -83,8 +93,10 @@ const loginUser = async (req, res) => {
     user.lastLogin = new Date().toISOString();
     await user.save();
 
+    // Set JWT as a secure httpOnly cookie
+    res.cookie("token", generateToken(user._id), COOKIE_OPTIONS);
+
     return res.json({
-      token: generateToken(user._id),
       user: {
         id: user.id,
         name: user.name,
@@ -109,6 +121,8 @@ const logoutUser = async (req, res) => {
       user.isOnline = false;
       await user.save();
     }
+    // Clear the auth cookie
+    res.clearCookie("token", { ...COOKIE_OPTIONS, maxAge: 0 });
     return res.json({ message: "Logged out successfully" });
   } catch (err) {
     console.error("Logout error:", err);
