@@ -1,11 +1,13 @@
-import React, { useState } from 'react'
+import React, { useState, useContext } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { toast } from "react-toastify"
 import { api } from '../services/api'
 import { User, Mail, Lock, Eye, EyeOff, ArrowRight } from "lucide-react"
+import { AuthContext } from '../context/AuthContext'
 
 function Registration() {
   const navigate = useNavigate()
+  const { login } = useContext(AuthContext)
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -22,9 +24,10 @@ function Registration() {
     if (!validEmail.test(email)) { toast.warning("Invalid email format"); return }
     setLoading(true)
     try {
-      await api.post("/auth/register", { name, email, password })
+      const { data } = await api.post("/auth/register", { name, email, password })
       toast.success("Account created successfully!")
-      setTimeout(() => { navigate("/login") }, 1000)
+      login(data.user.id)
+      setTimeout(() => { navigate("/") }, 1000)
     } catch (error) {
       console.error(error)
       const errorMsg = error.response?.data?.message || "Signup Failed"

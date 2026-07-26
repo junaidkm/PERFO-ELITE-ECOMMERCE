@@ -4,12 +4,29 @@ import { api } from "../services/api"
 
 export const AuthContext = createContext()
 
+// Helper functions to manage cookies in frontend JavaScript
+const getCookie = (name) => {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop().split(";").shift();
+  return null;
+};
+
+const setCookie = (name, value, days = 30) => {
+  const d = new Date();
+  d.setTime(d.getTime() + days * 24 * 60 * 60 * 1000);
+  document.cookie = `${name}=${value}; expires=${d.toUTCString()}; path=/; SameSite=Lax`;
+};
+
+const removeCookie = (name) => {
+  document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Lax`;
+};
+
 export const AuthProvider = ({ children }) => {
 
-  // userId is stored in localStorage so the profile can be refetched on page reload.
-  // The actual JWT token lives in a secure httpOnly cookie — never accessible to JS.
+  // userId is stored in cookies so the profile can be refetched on page reload.
   const [userId, setUserId] = useState(
-    () => localStorage.getItem("userId")
+    () => getCookie("userId")
   )
 
   const [user, setUser] = useState(null)
@@ -21,21 +38,21 @@ export const AuthProvider = ({ children }) => {
     }
   }, [userId])
 
-  // Called after a successful login/register — token is already in the httpOnly cookie
+  // Called after a successful login/register
   const login = (id) => {
-    localStorage.setItem("userId", id)
+    setCookie("userId", id, 30)
     setUserId(id)
   }
 
   const logout = async () => {
     try {
       if (userId) {
-        await api.post("/auth/logout") // Backend clears the httpOnly cookie
+        await api.post("/auth/logout")
       }
     } catch (err) {
       console.error("Logout error:", err)
     } finally {
-      localStorage.removeItem("userId")
+      removeCookie("userId")
       setUserId(null)
       setUser(null)
     }
@@ -51,7 +68,7 @@ export const AuthProvider = ({ children }) => {
       } catch (err) {
         console.log(err)
         if (err.response?.status === 401 || err.response?.status === 403) {
-          localStorage.removeItem("userId")
+          removeCookie("userId")
           setUserId(null)
           setUser(null)
         }

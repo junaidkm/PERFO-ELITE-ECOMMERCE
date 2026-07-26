@@ -1,7 +1,28 @@
 import { createContext, useContext, useEffect, useState } from "react"
 import { AuthContext } from "./AuthContext"
-import { getCart, updateCart, clearUserCart } from "../services/cartService"
+import { getCart, updateCart, clearUserCart, addItemToCart, removeItemFromCart } from "../services/cartService"
 import { toast } from "react-toastify"
+
+const mapCartItems = (itemsList) => {
+  if (!Array.isArray(itemsList)) return []
+  return itemsList
+    .map((item) => {
+      const product = item.productId
+      if (!product || typeof product !== "object") return null
+
+      const sizeInfo = product.sizes?.find((s) => s.size === item.size)
+      return {
+        id: item._id || item.id,
+        productId: product._id || product.id,
+        name: product.name,
+        img: product.img,
+        price: sizeInfo ? sizeInfo.price : 0,
+        size: item.size,
+        quantity: item.quantity,
+      }
+    })
+    .filter(Boolean)
+}
 
 export const CartContext = createContext()
 
@@ -23,14 +44,7 @@ export const CartProvider = ({ children }) => {
         ? data
         : data?.items || data?.cart || []
 
-      const safeCart = itemsList.map(item => ({
-        ...item,
-        id: item.id || item._id,
-        productId: item.productId || item.id || item._id,
-        quantity: item.quantity || 1
-      }))
-
-      setCart(safeCart)
+      setCart(mapCartItems(itemsList))
     } catch (err) {
       console.log("Failed to load cart:", err)
       toast.error("Failed to load cart")
@@ -48,39 +62,17 @@ export const CartProvider = ({ children }) => {
       setLoading(true)
       const targetProductId = product.id || product._id || product.productId
 
-      const exists = cart.find(
-        item =>
-          String(item.productId) === String(targetProductId) &&
-          item.size === selectedSize.size
-      )
+      const { data } = await addItemToCart({
+        productId: targetProductId,
+        size: selectedSize.size,
+        quantity: 1
+      })
 
-      let updatedCart
+      const itemsList = Array.isArray(data)
+        ? data
+        : data?.items || data?.cart || []
 
-      if (exists) {
-        updatedCart = cart.map(item =>
-          String(item.productId) === String(targetProductId) &&
-          item.size === selectedSize.size
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
-        )
-      } else {
-        updatedCart = [
-          ...cart,
-          {
-            id: crypto.randomUUID?.() || Date.now().toString(),
-            productId: targetProductId,
-            name: product.name,
-            img: product.img,
-            price: selectedSize.price,
-            size: selectedSize.size,
-            quantity: 1
-          }
-        ]
-      }
-
-      setCart(updatedCart)
-      await updateCart(userId, updatedCart)
-
+      setCart(mapCartItems(itemsList))
       toast.success("Added to cart 🛒")
     } catch (err) {
       console.log(err)
@@ -93,17 +85,20 @@ export const CartProvider = ({ children }) => {
   const removeFromCart = async (id) => {
     if (!userId) return
     try {
-      const updatedCart = cart.filter(
-        item => String(item.id) !== String(id) && String(item._id) !== String(id) && String(item.productId) !== String(id)
-      )
+      setLoading(true)
+      const { data } = await removeItemFromCart(id)
 
-      setCart(updatedCart)
-      await updateCart(userId, updatedCart)
+      const itemsList = Array.isArray(data)
+        ? data
+        : data?.items || data?.cart || []
 
+      setCart(mapCartItems(itemsList))
       toast.info("Item removed 🗑️")
     } catch (err) {
       console.log(err)
       toast.error("Error removing item")
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -127,7 +122,14 @@ export const CartProvider = ({ children }) => {
       })
 
       setCart(updatedCart)
-      await updateCart(userId, updatedCart)
+      
+      const { data } = await updateCart(userId, updatedCart)
+      
+      const itemsList = Array.isArray(data)
+        ? data
+        : data?.items || data?.cart || []
+
+      setCart(mapCartItems(itemsList))
     } catch (err) {
       console.log(err)
       toast.error("Failed to update quantity")

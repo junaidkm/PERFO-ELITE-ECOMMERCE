@@ -3,7 +3,6 @@ import { AuthContext } from "../context/AuthContext"
 import { useNavigate } from "react-router-dom"
 import Layout from "../components/Layout"
 import { cancelOrder, getOrders } from "../services/orderService"
-import { api } from "../services/api"
 import { toast } from "react-toastify"
 import { Package, ArrowRight, X, ChevronRight } from "lucide-react"
 

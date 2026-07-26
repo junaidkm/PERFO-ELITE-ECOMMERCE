@@ -13,10 +13,6 @@ function UserProtected({ children }) {
     )
   }
 
-  if (!userId) {
-    return <Navigate to="/login" replace />
-  }
-
   if (user?.role === "admin") {
     return <Navigate to="/admin" replace />
   }

@@ -53,7 +53,7 @@ export const WishlistProvider = ({ children }) => {
       updatedWishlist = [
         ...wishlist,
         {
-          id: crypto.randomUUID?.() || Date.now(),
+          id: Date.now().toString(36) + Math.random().toString(36).substring(2, 9),
           productId: targetId,
           name: product.name,
           img: product.img,

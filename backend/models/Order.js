@@ -1,9 +1,7 @@
 const mongoose = require("mongoose");
-const crypto = require("crypto");
 
 const orderItemSchema = new mongoose.Schema({
-  _id: { type: String, default: () => crypto.randomUUID() },
-  productId: { type: String, required: true },
+  productId: { type: mongoose.Schema.Types.ObjectId, ref: "Product", required: true },
   name: { type: String },
   img: { type: String },
   price: { type: Number, required: true },
@@ -11,14 +9,9 @@ const orderItemSchema = new mongoose.Schema({
   quantity: { type: Number, required: true }
 });
 
-orderItemSchema.virtual("id").get(function () {
-  return this._id;
-});
-
 orderItemSchema.set("toJSON", {
   virtuals: true,
   transform: function (doc, ret) {
-    ret.id = ret._id;
     delete ret._id;
     return ret;
   }
@@ -26,8 +19,7 @@ orderItemSchema.set("toJSON", {
 
 const orderSchema = new mongoose.Schema(
   {
-    _id: { type: String, default: () => crypto.randomUUID() },
-    userId: { type: String, ref: "User", required: true },
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     date: {
       type: String,
       default: () => new Date().toLocaleDateString("en-US", {
@@ -55,18 +47,12 @@ const orderSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-orderSchema.virtual("id").get(function () {
-  return this._id;
-});
-
 orderSchema.set("toJSON", {
   virtuals: true,
   transform: function (doc, ret) {
-    ret.id = ret._id;
     delete ret._id;
     delete ret.__v;
     return ret;
   }
 });
-
 module.exports = mongoose.model("Order", orderSchema);

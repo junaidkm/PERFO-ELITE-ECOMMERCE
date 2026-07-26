@@ -10,15 +10,15 @@ const app = express();
 app.use(
   cors({
     origin: process.env.CLIENT_URL || "http://localhost:5173",
-    credentials: true, // Allow cookies to be sent/received cross-origin
+    credentials: true,
   })
 );
-app.use(cookieParser()); // Parse incoming cookies
+app.use(cookieParser());
 connectDB();
 
 app.use(express.json());
 
-// Import Route Handlers
+
 const productRoutes = require("./routes/productRoutes");
 const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/userRoutes");
@@ -31,21 +31,21 @@ const { protect } = require("./middleware/authMiddleware");
 const { notFound, errorHandler } = require("./middleware/errorMiddleware");
 const { apiLimiter, authLimiter } = require("./middleware/rateLimiter");
 
-// Rate Limiting Middleware
+
 app.use("/api/auth", authLimiter);
 app.use("/api", apiLimiter);
 
-// Public API Routes
+
 app.use("/api/products", productRoutes);
 app.use("/api/auth", authRoutes);
 
-// Protected API Routes (Requires Authentication Token)
+
 app.use("/api/users", protect, userRoutes);
 app.use("/api/cart", protect, cartRoutes);
 app.use("/api/wishlist", protect, wishlistRoutes);
 app.use("/api/orders", protect, orderRoutes);
 
-// Error Handling Middleware
+
 app.use(notFound);
 app.use(errorHandler);
 

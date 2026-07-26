@@ -3,7 +3,7 @@ import Layout from "../components/Layout"
 import { AuthContext } from "../context/AuthContext"
 import { CartContext } from "../context/CartContext"
 import { useNavigate, useLocation } from "react-router-dom"
-import { MapPin, CreditCard, Truck, ShieldCheck, Lock, Package, CheckCircle2 } from "lucide-react"
+import { MapPin, CreditCard, Truck, ShieldCheck, Lock, Package } from "lucide-react"
 import { createOrder } from "../services/orderService"
 
 function Payment() {

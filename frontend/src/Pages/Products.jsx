@@ -9,55 +9,84 @@ function Products() {
   const [loading, setLoading] = useState(true)
 
   const [search, setSearch] = useState("")
+  const [inputSearch, setInputSearch] = useState("")
   const [category, setCategory] = useState("all")
   const [sort, setSort] = useState("default")
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalProducts, setTotalProducts] = useState(0)
+  const [categories, setCategories] = useState(["all"])
 
+  // Debounce search input to avoid redundant API queries
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearch(inputSearch)
+    }, 400)
+    return () => clearTimeout(timer)
+  }, [inputSearch])
+
+  // Reset to page 1 whenever filters change
+  useEffect(() => {
+    setPage(1)
+  }, [search, category, sort])
+
+  // Fetch paginated, sorted, and filtered products from the backend
   useEffect(() => {
     const fetchProducts = async () => {
       try {
         setLoading(true)
-        const res = await api.get("/products")
-        setProducts(res.data)
+        const res = await api.get("/products", {
+          params: {
+            search,
+            category,
+            sort,
+            page,
+            limit: 8
+          }
+        })
+        setProducts(res.data.products || [])
+        setTotalPages(res.data.totalPages || 1)
+        setTotalProducts(res.data.totalProducts || 0)
+        if (res.data.categories) {
+          setCategories(res.data.categories)
+        }
       } catch (err) {
-        console.log("Error fetching products:", err)
+        console.error("Error fetching products:", err)
       } finally {
         setLoading(false)
       }
     }
 
     fetchProducts()
-  }, [])
-
-  const getPrice = (item) => item.sizes?.[0]?.price || 0
-
-  const filteredProducts = useMemo(() => {
-    return products
-      .filter((item) =>
-        item.name.toLowerCase().includes(search.toLowerCase().trim()) ||
-        (item.description && item.description.toLowerCase().includes(search.toLowerCase().trim()))
-      )
-      .filter((item) =>
-        category === "all" ? true : item.category === category
-      )
-      .sort((a, b) => {
-        if (sort === "low") return getPrice(a) - getPrice(b)
-        if (sort === "high") return getPrice(b) - getPrice(a)
-        return 0
-      })
-  }, [products, search, category, sort])
-
-  const categories = useMemo(() => {
-    const unique = Array.from(new Set(products.map((p) => p.category).filter(Boolean)))
-    return ["all", ...unique]
-  }, [products])
+  }, [search, category, sort, page])
 
   const clearFilters = () => {
+    setInputSearch("")
     setSearch("")
     setCategory("all")
     setSort("default")
+    setPage(1)
   }
 
-  const isFiltered = search !== "" || category !== "all" || sort !== "default"
+  const isFiltered = inputSearch !== "" || category !== "all" || sort !== "default"
+
+  // Compute pagination number array dynamically with ellipse (...) spacer
+  const getPageNumbers = () => {
+    const pages = []
+    const range = 2
+    for (let i = 1; i <= totalPages; i++) {
+      if (
+        i === 1 ||
+        i === totalPages ||
+        (i >= page - range && i <= page + range)
+      ) {
+        pages.push(i)
+      } else if (pages[pages.length - 1] !== "...") {
+        pages.push("...")
+      }
+    }
+    return pages
+  }
 
   return (
     <div className="min-h-screen bg-[#fafafa]">
@@ -95,7 +124,7 @@ function Products() {
                     {categories.map((cat) => (
                       <button
                         key={cat}
-                        onClick={() => setCategory(cat)}
+                        onClick={() => { setCategory(cat); setPage(1); }}
                         className={`block w-full text-left px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${
                           category === cat
                             ? "bg-gray-900 text-white shadow-md"
@@ -116,7 +145,7 @@ function Products() {
                   <div className="relative">
                     <select
                       value={sort}
-                      onChange={(e) => setSort(e.target.value)}
+                      onChange={(e) => { setSort(e.target.value); setPage(1); }}
                       className="w-full appearance-none px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 font-semibold focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent transition-all cursor-pointer"
                     >
                       <option value="default">Featured</option>
@@ -141,7 +170,7 @@ function Products() {
                     <Sparkles className="w-6 h-6 text-amber-500 hidden sm:inline-block" />
                   </h1>
                   <p className="text-gray-500 mt-1 text-sm">
-                    {loading ? "Loading collection..." : `${filteredProducts.length} ${filteredProducts.length === 1 ? "product" : "products"} available`}
+                    {loading ? "Loading collection..." : `${totalProducts} ${totalProducts === 1 ? "product" : "products"} available`}
                   </p>
                 </div>
 
@@ -151,13 +180,13 @@ function Products() {
                   <input
                     type="text"
                     placeholder="Search luxury perfumes..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
+                    value={inputSearch}
+                    onChange={(e) => setInputSearch(e.target.value)}
                     className="w-full pl-11 pr-10 py-3 bg-white border border-gray-200 rounded-2xl text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent transition-all shadow-sm"
                   />
-                  {search && (
+                  {inputSearch && (
                     <button
-                      onClick={() => setSearch("")}
+                      onClick={() => setInputSearch("")}
                       className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 rounded-full"
                     >
                       <X className="w-4 h-4" />
@@ -172,14 +201,14 @@ function Products() {
                   <div className="w-12 h-12 border-4 border-gray-200 border-t-amber-500 rounded-full animate-spin mb-4"></div>
                   <p className="text-gray-500 font-medium">Loading luxury collection...</p>
                 </div>
-              ) : filteredProducts.length === 0 ? (
+              ) : products.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-24 bg-white rounded-3xl border border-dashed border-gray-200 shadow-sm text-center px-4">
                   <div className="w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center mb-4">
                     <Sparkles className="w-8 h-8 text-amber-400" />
                   </div>
                   <p className="text-xl text-gray-800 font-bold mb-1">No perfumes found</p>
                   <p className="text-sm text-gray-400 mb-6 max-w-sm">
-                    We couldn't find any products matching "{search || category}". Try resetting your filters.
+                    We couldn't find any products matching "{inputSearch || category}". Try resetting your filters.
                   </p>
                   <button
                     onClick={clearFilters}
@@ -189,11 +218,56 @@ function Products() {
                   </button>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
-                  {filteredProducts.map((item) => (
-                    <ProductCard key={item.id || item._id} item={item} />
-                  ))}
-                </div>
+                <>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 animate-scaleIn">
+                    {products.map((item) => (
+                      <ProductCard key={item.id || item._id} item={item} />
+                    ))}
+                  </div>
+
+                  {/* Pagination Controls */}
+                  {totalPages > 1 && (
+                    <div className="mt-12 flex flex-wrap justify-center items-center gap-3">
+                      <button
+                        disabled={page === 1}
+                        onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                        className="px-4.5 py-2.5 text-sm font-bold border border-gray-200 rounded-xl bg-white text-gray-700 hover:bg-gray-900 hover:text-white disabled:opacity-50 disabled:hover:bg-white disabled:hover:text-gray-700 disabled:cursor-not-allowed transition-all duration-300 shadow-sm active:scale-95"
+                      >
+                        Previous
+                      </button>
+
+                      <div className="flex items-center gap-1.5">
+                        {getPageNumbers().map((p, idx) =>
+                          p === "..." ? (
+                            <span key={`dots-${idx}`} className="w-10 text-center text-gray-400 font-bold">
+                              ...
+                            </span>
+                          ) : (
+                            <button
+                              key={p}
+                              onClick={() => setPage(p)}
+                              className={`w-10 h-10 flex items-center justify-center rounded-xl text-sm font-black transition-all duration-300 ${
+                                page === p
+                                  ? "bg-gray-900 text-white shadow-md scale-105"
+                                  : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-150 active:scale-95 shadow-sm"
+                              }`}
+                            >
+                              {p}
+                            </button>
+                          )
+                        )}
+                      </div>
+
+                      <button
+                        disabled={page === totalPages}
+                        onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+                        className="px-4.5 py-2.5 text-sm font-bold border border-gray-200 rounded-xl bg-white text-gray-700 hover:bg-gray-900 hover:text-white disabled:opacity-50 disabled:hover:bg-white disabled:hover:text-gray-700 disabled:cursor-not-allowed transition-all duration-300 shadow-sm active:scale-95"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  )}
+                </>
               )}
 
             </div>
@@ -205,4 +279,4 @@ function Products() {
   )
 }
 
-export default Products
+export default Products;

@@ -1,6 +1,5 @@
 const Wishlist = require("../models/Wishlist");
 
-// Helper to get or create wishlist document for user
 const getOrCreateWishlist = async (userId) => {
   let wishlist = await Wishlist.findOne({ userId });
   if (!wishlist) {
@@ -10,16 +9,10 @@ const getOrCreateWishlist = async (userId) => {
   return wishlist;
 };
 
-// @desc    Get user wishlist
-// @route   GET /api/wishlist or GET /api/wishlist/:userId
-// @access  Private
+
 const getWishlist = async (req, res) => {
   try {
-    const userId = req.params.userId || (req.user && req.user.id);
-    if (!userId) {
-      return res.status(400).json({ message: "User ID is required" });
-    }
-
+    const userId = req.user.id;
     const wishlistDoc = await getOrCreateWishlist(userId);
     return res.json(wishlistDoc.items || []);
   } catch (err) {
@@ -28,17 +21,12 @@ const getWishlist = async (req, res) => {
   }
 };
 
-// @desc    Add item to wishlist
-// @route   POST /api/wishlist
-// @access  Private
+
 const addToWishlist = async (req, res) => {
   try {
-    const userId = (req.user && req.user.id) || req.body.userId;
+    const userId = req.user.id;
     const { productId, name, img, price } = req.body;
 
-    if (!userId) {
-      return res.status(400).json({ message: "User ID is required" });
-    }
     if (!productId) {
       return res.status(400).json({ message: "Product ID is required" });
     }
@@ -61,17 +49,12 @@ const addToWishlist = async (req, res) => {
   }
 };
 
-// @desc    Toggle item in wishlist (add if missing, remove if present)
-// @route   POST /api/wishlist/toggle
-// @access  Private
+
 const toggleWishlist = async (req, res) => {
   try {
-    const userId = (req.user && req.user.id) || req.body.userId;
+    const userId = req.user.id;
     const { productId, name, img, price } = req.body;
 
-    if (!userId) {
-      return res.status(400).json({ message: "User ID is required" });
-    }
     if (!productId) {
       return res.status(400).json({ message: "Product ID is required" });
     }
@@ -103,17 +86,11 @@ const toggleWishlist = async (req, res) => {
   }
 };
 
-// @desc    Update whole wishlist items array
-// @route   PUT /api/wishlist or PUT /api/wishlist/:userId
-// @access  Private
+
 const updateWishlist = async (req, res) => {
   try {
-    const userId = req.params.userId || (req.user && req.user.id) || req.body.userId;
+    const userId = req.user.id;
     const items = req.body.wishlist || req.body.items;
-
-    if (!userId) {
-      return res.status(400).json({ message: "User ID is required" });
-    }
 
     if (!Array.isArray(items)) {
       return res.status(400).json({ message: "Wishlist must be an array" });
@@ -130,17 +107,11 @@ const updateWishlist = async (req, res) => {
   }
 };
 
-// @desc    Remove an item from wishlist
-// @route   DELETE /api/wishlist/:productId
-// @access  Private
+
 const removeFromWishlist = async (req, res) => {
   try {
-    const userId = (req.user && req.user.id) || req.query.userId || req.body.userId;
+    const userId = req.user.id;
     const { productId } = req.params;
-
-    if (!userId) {
-      return res.status(400).json({ message: "User ID is required" });
-    }
 
     const wishlistDoc = await getOrCreateWishlist(userId);
     wishlistDoc.items = wishlistDoc.items.filter(
@@ -155,16 +126,10 @@ const removeFromWishlist = async (req, res) => {
   }
 };
 
-// @desc    Clear wishlist
-// @route   DELETE /api/wishlist/clear
-// @access  Private
+
 const clearWishlist = async (req, res) => {
   try {
-    const userId = (req.user && req.user.id) || req.body.userId || req.query.userId;
-
-    if (!userId) {
-      return res.status(400).json({ message: "User ID is required" });
-    }
+    const userId = req.user.id;
 
     const wishlistDoc = await getOrCreateWishlist(userId);
     wishlistDoc.items = [];

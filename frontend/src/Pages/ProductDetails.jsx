@@ -5,7 +5,7 @@ import { CartContext } from "../context/CartContext"
 import { WishlistContext } from "../context/WishlistContext"
 import { toast } from "react-toastify"
 import { api } from "../services/api"
-import { ChevronLeft, ShoppingCart, Zap, Info, ShieldCheck, Truck, Heart, Sparkles, Award } from "lucide-react"
+import { ChevronLeft, ShoppingCart, Zap, Info, ShieldCheck, Truck, Heart, Sparkles } from "lucide-react"
 
 import Layout from "../components/Layout"
 
@@ -32,7 +32,7 @@ function ProductDetails() {
         setProduct(data)
         setSelectedSize(data.sizes?.[0] || null)
       } catch (err) {
-        console.log("Error fetching product:", err)
+        console.error("Error fetching product:", err)
         toast.error("Failed to load product details")
       } finally {
         setLoading(false)

@@ -32,8 +32,6 @@ function LoginPage() {
     } finally { setLoading(false) }
   }
 
-
-
   const handleEnter = (e) => { if (e.key === "Enter") handleLogin() }
 
   return (
@@ -101,8 +99,6 @@ function LoginPage() {
               </div>
             </div>
 
-
-
             <button
               onClick={handleLogin}
               disabled={loading}
@@ -115,7 +111,6 @@ function LoginPage() {
                 <>Sign In <ArrowRight className="w-4 h-4" /></>
               )}
             </button>
-
 
           </div>
 

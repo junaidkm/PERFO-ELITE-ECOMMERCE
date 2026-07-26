@@ -1,26 +1,23 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 
-// Secure cookie options
-const COOKIE_OPTIONS = {
-  httpOnly: true,                               // Not accessible via JavaScript
-  secure: process.env.NODE_ENV === "production", // HTTPS only in production
-  sameSite: "lax",                              // CSRF protection
-  maxAge: 30 * 24 * 60 * 60 * 1000,            // 30 days in milliseconds
-};
 
-// Helper to generate JWT token
 const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET || "default_jwt_secret_key_123", {
+  return jwt.sign({ id }, process.env.JWT_SECRET, {
     expiresIn: "30d"
   });
 };
 
-// @desc    Register a new user
-// @route   POST /api/auth/register
-// @access  Public
+const COOKIE_OPTIONS = {
+  httpOnly: true,                               
+  secure: "process.env.NODE_ENV" === "production", 
+  sameSite: "lax",                             
+  maxAge: 30 * 24 * 60 * 60 * 1000,            
+};
+
 const registerUser = async (req, res) => {
   const { name, email, password } = req.body;
+
 
   if (!name || !email || !password) {
     return res.status(400).json({ message: "Please fill in all fields" });
@@ -33,22 +30,19 @@ const registerUser = async (req, res) => {
     }
 
     const user = new User({
-      _id: crypto.randomUUID(),
       name,
       email,
-      password, // will be hashed by User pre-save hook
-      role: "user",
-      blocked: false,
-      isOnline: false,
-      lastLogin: ""
+      password
     });
 
     await user.save();
 
-    // Set JWT as a secure httpOnly cookie
-    res.cookie("token", generateToken(user._id), COOKIE_OPTIONS);
+    const token = generateToken(user._id);
+    
+    res.cookie("token", token, COOKIE_OPTIONS);
 
     return res.status(201).json({
+      token,
       user: {
         id: user.id,
         name: user.name,
@@ -63,14 +57,11 @@ const registerUser = async (req, res) => {
   }
 };
 
-// @desc    Authenticate user & get token
-// @route   POST /api/auth/login
-// @access  Public
 const loginUser = async (req, res) => {
   const { email, password } = req.body;
 
   if (!email || !password) {
-    return res.status(400).json({ message: "Please enter email and password" });
+    return res.status(400).json({ message: "Please enter email and password" })
   }
 
   try {
@@ -93,10 +84,13 @@ const loginUser = async (req, res) => {
     user.lastLogin = new Date().toISOString();
     await user.save();
 
-    // Set JWT as a secure httpOnly cookie
-    res.cookie("token", generateToken(user._id), COOKIE_OPTIONS);
-
+    const token = generateToken(user._id);
+   
+    res.cookie("token", token, COOKIE_OPTIONS);
+    
+    
     return res.json({
+      token,
       user: {
         id: user.id,
         name: user.name,
@@ -111,9 +105,6 @@ const loginUser = async (req, res) => {
   }
 };
 
-// @desc    Logout user & update online status
-// @route   POST /api/auth/logout
-// @access  Private
 const logoutUser = async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
@@ -121,7 +112,7 @@ const logoutUser = async (req, res) => {
       user.isOnline = false;
       await user.save();
     }
-    // Clear the auth cookie
+    
     res.clearCookie("token", { ...COOKIE_OPTIONS, maxAge: 0 });
     return res.json({ message: "Logged out successfully" });
   } catch (err) {

@@ -1,17 +1,11 @@
 const User = require("../models/User");
 
-// @desc    Get user profile (self or by id)
-// @route   GET /api/users/profile or GET /api/users/:id
-// @access  Private
+
 const getUserProfile = async (req, res) => {
   try {
-    const userId = req.params.id || (req.user && req.user.id);
+    const userId = req.params.id || req.user.id;
 
-    if (!userId) {
-      return res.status(400).json({ message: "User ID is required" });
-    }
-
-    if (req.user && String(req.user.id) !== String(userId)) {
+    if (String(req.user.id) !== String(userId))  {
       return res.status(403).json({ message: "Access denied, unauthorized resource access" });
     }
 
