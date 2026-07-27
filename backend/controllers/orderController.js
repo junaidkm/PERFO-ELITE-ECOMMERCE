@@ -1,5 +1,6 @@
 const Order = require("../models/Order");
 
+// User: Get logged-in user's orders
 const getOrders = async (req, res) => {
   try {
     const orders = await Order.find({ userId: req.user.id }).sort({ createdAt: -1 });
@@ -10,6 +11,21 @@ const getOrders = async (req, res) => {
   }
 };
 
+// Admin: Get all orders across all users using Mongoose query
+const getAllAdminOrders = async (req, res) => {
+  try {
+    const orders = await Order.find()
+      .populate("userId", "name email")
+      .sort({ createdAt: -1 })
+      .exec();
+    return res.json(orders);
+  } catch (err) {
+    console.error("Get all admin orders error:", err);
+    return res.status(500).json({ message: "Failed to fetch all orders", error: err.message });
+  }
+};
+
+// User: Create new order using Mongoose model method
 const createOrder = async (req, res) => {
   try {
     const { items, total, address, paymentMethod } = req.body;
@@ -39,10 +55,11 @@ const createOrder = async (req, res) => {
   }
 };
 
+// User: Cancel user's own order
 const cancelOrder = async (req, res) => {
   try {
     const { orderId } = req.params;
-    
+
     const order = await Order.findOne({ _id: orderId, userId: req.user.id });
 
     if (!order) {
@@ -63,8 +80,56 @@ const cancelOrder = async (req, res) => {
   }
 };
 
+// Admin: Update order status using Mongoose findByIdAndUpdate
+const updateOrderStatus = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { status } = req.body;
+
+    if (!status) {
+      return res.status(400).json({ message: "Status is required" });
+    }
+
+    const order = await Order.findByIdAndUpdate(
+      orderId,
+      { $set: { status } },
+      { returnDocument: "after", runValidators: true }
+    );
+
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    return res.json(order);
+  } catch (err) {
+    console.error("Update order status error:", err);
+    return res.status(500).json({ message: "Failed to update order status", error: err.message });
+  }
+};
+
+// Admin: Delete order using Mongoose findByIdAndDelete
+const deleteOrder = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+
+    const order = await Order.findByIdAndDelete(orderId);
+
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    return res.json({ message: "Order deleted successfully", id: orderId });
+  } catch (err) {
+    console.error("Delete order error:", err);
+    return res.status(500).json({ message: "Failed to delete order", error: err.message });
+  }
+};
+
 module.exports = {
   getOrders,
+  getAllAdminOrders,
   createOrder,
-  cancelOrder
+  cancelOrder,
+  updateOrderStatus,
+  deleteOrder
 };

@@ -40,7 +40,7 @@ const getProducts = async (req, res) => {
       .skip(skip)
       .limit(limitNum);
 
-    const categories = await Product.distinct("category");
+    const categories = await Product.distinct("category", { category: { $exists: true, $ne: null } });
     const totalPages = Math.ceil(totalProducts / limitNum);
 
     return res.json({
@@ -48,7 +48,7 @@ const getProducts = async (req, res) => {
       totalPages,
       currentPage: pageNum,
       totalProducts,
-      categories: ["all", ...categories.filter(Boolean)]
+      categories: ["all", ...categories]
     });
   } catch (err) {
     console.error("Get products error:", err);
@@ -72,7 +72,76 @@ const getProductById = async (req, res) => {
   }
 };
 
+const createProduct = async (req, res) => {
+  try {
+    const { name, category, sizes, description, topNotes, baseNotes, importedBy, origin, manufacturer, img } = req.body;
+
+    if (!name || !category || !sizes || !Array.isArray(sizes) || sizes.length === 0) {
+      return res.status(400).json({ message: "Name, category, and at least one size are required" });
+    }
+
+    const product = await Product.create({
+      name,
+      category,
+      sizes,
+      description,
+      topNotes,
+      baseNotes,
+      importedBy,
+      origin,
+      manufacturer,
+      img
+    });
+
+    return res.status(201).json(product);
+  } catch (err) {
+    console.error("Create product error:", err);
+    return res.status(500).json({ message: "Failed to create product", error: err.message });
+  }
+};
+
+const updateProduct = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const product = await Product.findByIdAndUpdate(
+      id,
+      { $set: req.body },
+      { returnDocument: "after", runValidators: true }
+    );
+
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    return res.json(product);
+  } catch (err) {
+    console.error("Update product error:", err);
+    return res.status(500).json({ message: "Failed to update product", error: err.message });
+  }
+};
+
+const deleteProduct = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const product = await Product.findByIdAndDelete(id);
+
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    return res.json({ message: "Product deleted successfully", id });
+  } catch (err) {
+    console.error("Delete product error:", err);
+    return res.status(500).json({ message: "Failed to delete product", error: err.message });
+  }
+};
+
 module.exports = {
   getProducts,
-  getProductById
+  getProductById,
+  createProduct,
+  updateProduct,
+  deleteProduct
 };

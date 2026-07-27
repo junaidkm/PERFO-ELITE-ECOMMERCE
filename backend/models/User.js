@@ -38,19 +38,31 @@ const userSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
-userSchema.pre("save", async function() {
+userSchema.pre("save", async function () {
   if (!this.isModified("password")) return;
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
 });
 
-userSchema.methods.comparePassword = async function(candidatePassword) {
+userSchema.methods.comparePassword = async function (candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
 };
 
+// Mongoose Post Middleware: Cascade delete Wishlist, Cart, and Orders when a User is deleted
+userSchema.post("findOneAndDelete", async function (doc) {
+  if (doc) {
+    await Promise.all([
+      mongoose.model("Cart").deleteMany({ userId: doc._id }),
+      mongoose.model("Wishlist").deleteMany({ userId: doc._id }),
+      mongoose.model("Order").deleteMany({ userId: doc._id })
+    ]);
+  }
+});
+
+
 userSchema.set("toJSON", {
   virtuals: true,
-  transform: function(doc, ret, options) {
+  transform: function (doc, ret, options) {
     delete ret._id;
     delete ret.__v;
     delete ret.password;

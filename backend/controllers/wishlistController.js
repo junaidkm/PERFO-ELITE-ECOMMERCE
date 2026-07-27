@@ -9,7 +9,6 @@ const getOrCreateWishlist = async (userId) => {
   return wishlist;
 };
 
-
 const getWishlist = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -20,7 +19,6 @@ const getWishlist = async (req, res) => {
     return res.status(500).json({ message: "Failed to fetch wishlist", error: err.message });
   }
 };
-
 
 const addToWishlist = async (req, res) => {
   try {
@@ -38,6 +36,7 @@ const addToWishlist = async (req, res) => {
     );
 
     if (!exists) {
+      // Mongoose DocumentArray push subdocument method
       wishlistDoc.items.push({ productId, name, img, price });
       await wishlistDoc.save();
     }
@@ -48,7 +47,6 @@ const addToWishlist = async (req, res) => {
     return res.status(500).json({ message: "Failed to add item to wishlist", error: err.message });
   }
 };
-
 
 const toggleWishlist = async (req, res) => {
   try {
@@ -61,14 +59,16 @@ const toggleWishlist = async (req, res) => {
 
     const wishlistDoc = await getOrCreateWishlist(userId);
 
-    const index = wishlistDoc.items.findIndex(
+    const existingItem = wishlistDoc.items.find(
       (item) => String(item.productId) === String(productId)
     );
 
     let isAdded = false;
-    if (index > -1) {
-      wishlistDoc.items.splice(index, 1);
+    if (existingItem) {
+      // Mongoose DocumentArray pull subdocument method
+      wishlistDoc.items.pull(existingItem._id);
     } else {
+      // Mongoose DocumentArray push subdocument method
       wishlistDoc.items.push({ productId, name, img, price });
       isAdded = true;
     }
@@ -85,7 +85,6 @@ const toggleWishlist = async (req, res) => {
     return res.status(500).json({ message: "Failed to toggle wishlist item", error: err.message });
   }
 };
-
 
 const updateWishlist = async (req, res) => {
   try {
@@ -107,16 +106,24 @@ const updateWishlist = async (req, res) => {
   }
 };
 
-
 const removeFromWishlist = async (req, res) => {
   try {
     const userId = req.user.id;
     const { productId } = req.params;
 
     const wishlistDoc = await getOrCreateWishlist(userId);
-    wishlistDoc.items = wishlistDoc.items.filter(
-      (item) => String(item.productId) !== String(productId) && String(item.id) !== String(productId) && String(item._id) !== String(productId)
+    
+    const matchingItem = wishlistDoc.items.find(
+      (item) => String(item.productId) === String(productId) || String(item._id) === String(productId)
     );
+
+    if (matchingItem) {
+      // Mongoose DocumentArray pull subdocument method
+      wishlistDoc.items.pull(matchingItem._id);
+    } else {
+      wishlistDoc.items.pull({ productId });
+    }
+
     await wishlistDoc.save();
 
     return res.json(wishlistDoc.items);
@@ -125,7 +132,6 @@ const removeFromWishlist = async (req, res) => {
     return res.status(500).json({ message: "Failed to remove item from wishlist", error: err.message });
   }
 };
-
 
 const clearWishlist = async (req, res) => {
   try {
