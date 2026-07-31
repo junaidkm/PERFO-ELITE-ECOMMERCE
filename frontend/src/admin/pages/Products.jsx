@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react"
 import { api } from "../../services/api"
-import { Package, Search, Plus, Edit2, Trash2, X, UploadCloud, Tag } from "lucide-react"
+import { Package, Search, Plus, Edit2, Trash2, X, UploadCloud, Tag, CheckCircle2 } from "lucide-react"
+import { toast } from "react-toastify"
 
 function Products() {
   const [products, setProducts] = useState([])
@@ -14,8 +15,10 @@ function Products() {
     category: "",
     img: "",
     description: "",
+    topNotes: "",
+    baseNotes: "",
     sizes: [
-      { size: "70ml", price: "", stock: "In Stock" },
+      { size: "50ml", price: "", stock: "In Stock" },
       { size: "100ml", price: "", stock: "In Stock" }
     ]
   })
@@ -23,8 +26,12 @@ function Products() {
   const fetchProducts = async () => {
     try {
       setLoading(true)
-      const { data } = await api.get("/products") 
-      setProducts(data)
+      const { data } = await api.get("/products")
+      const list = Array.isArray(data) ? data : data?.products || []
+      setProducts(list)
+    } catch (err) {
+      console.error("Fetch products error:", err)
+      toast.error("Failed to load products ❌")
     } finally {
       setLoading(false)
     }
@@ -36,37 +43,72 @@ function Products() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (editing) {
-      await api.put(`/products/${editing.id}`, form)
-    } else {
-      await api.post("/products", { ...form, id: Date.now().toString(36) + Math.random().toString(36).substring(2, 9) })
+    try {
+      const targetId = editing ? (editing.id || editing._id) : null
+      if (editing && targetId) {
+        await api.put(`/products/${targetId}`, form)
+        toast.success("Product updated successfully ✨")
+      } else {
+        await api.post("/products", form)
+        toast.success("Product created successfully 🚀")
+      }
+      resetForm()
+      fetchProducts()
+      setView("list")
+    } catch (err) {
+      console.error("Save product error:", err)
+      toast.error(err.response?.data?.message || "Failed to save product ❌")
     }
-    resetForm()
-    fetchProducts()
-    setView("list")
   }
 
   const handleEdit = (p) => {
-    setForm(p)
+    setForm({
+      name: p.name || "",
+      category: p.category || "",
+      img: p.img || "",
+      description: p.description || "",
+      topNotes: p.topNotes || "",
+      baseNotes: p.baseNotes || "",
+      sizes: p.sizes || [
+        { size: "50ml", price: "", stock: "In Stock" },
+        { size: "100ml", price: "", stock: "In Stock" }
+      ]
+    })
     setEditing(p)
     setView("form")
   }
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Delete this product?")) return
-    await api.delete(`/products/${id}`)
-    fetchProducts()
+    if (!id) return
+    if (!window.confirm("Are you sure you want to delete this product?")) return
+    try {
+      await api.delete(`/products/${id}`)
+      toast.info("Product deleted 🗑️")
+      fetchProducts()
+    } catch (err) {
+      console.error("Delete product error:", err)
+      toast.error("Failed to delete product ❌")
+    }
   }
 
   const toggleStock = async (product, index) => {
-    const updated = { ...product }
-    updated.sizes[index].stock =
-      updated.sizes[index].stock === "In Stock"
-        ? "Out of Stock"
-        : "In Stock"
+    const targetId = product.id || product._id
+    if (!targetId) return
 
-    await api.put(`/products/${product.id}`, updated)
-    fetchProducts()
+    const updatedSizes = [...product.sizes]
+    updatedSizes[index] = {
+      ...updatedSizes[index],
+      stock: updatedSizes[index].stock === "In Stock" ? "Out of Stock" : "In Stock"
+    }
+
+    try {
+      await api.put(`/products/${targetId}`, { ...product, sizes: updatedSizes })
+      toast.success("Stock status updated")
+      fetchProducts()
+    } catch (err) {
+      console.error("Update stock error:", err)
+      toast.error("Failed to update stock status")
+    }
   }
 
   const resetForm = () => {
@@ -75,8 +117,10 @@ function Products() {
       category: "",
       img: "",
       description: "",
+      topNotes: "",
+      baseNotes: "",
       sizes: [
-        { size: "70ml", price: "", stock: "In Stock" },
+        { size: "50ml", price: "", stock: "In Stock" },
         { size: "100ml", price: "", stock: "In Stock" }
       ]
     })
@@ -84,21 +128,23 @@ function Products() {
   }
 
   const filteredProducts = products.filter((p) =>
-    p.name.toLowerCase().includes(search.toLowerCase())
+    (p.name || "").toLowerCase().includes(search.toLowerCase()) ||
+    (p.category || "").toLowerCase().includes(search.toLowerCase())
   )
 
-  const inputClass = "w-full px-4 py-3 bg-gray-900 border border-white/10 rounded-xl text-white placeholder-gray-500 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all"
+  const inputClass = "w-full px-4 py-3 bg-gray-900 border border-white/10 rounded-xl text-white placeholder-gray-500 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent transition-all"
 
   return (
     <div className="space-y-8">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex items-center gap-4">
-          <div className="p-3 bg-purple-500/10 rounded-2xl border border-purple-500/20">
-            <Package className="w-6 h-6 text-purple-400" />
+          <div className="p-3 bg-amber-500/10 rounded-2xl border border-amber-500/20">
+            <Package className="w-6 h-6 text-amber-400" />
           </div>
           <div>
-            <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">Products</h2>
-            <p className="text-gray-400 text-sm mt-1 font-medium">Manage your fragrance catalog</p>
+            <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">Products Management</h2>
+            <p className="text-gray-400 text-sm mt-1 font-medium">Add, edit, and delete products in your luxury catalog</p>
           </div>
         </div>
 
@@ -108,7 +154,7 @@ function Products() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
               <input
                 placeholder="Search products..."
-                className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400 transition-all"
+                className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400 transition-all"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -118,10 +164,10 @@ function Products() {
                 resetForm()
                 setView("form")
               }}
-              className="flex items-center gap-2 px-5 py-2.5 bg-yellow-400 text-gray-900 font-bold rounded-xl hover:bg-yellow-300 transition-all shadow-lg shadow-yellow-400/20"
+              className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-amber-400 to-amber-500 text-gray-950 font-bold rounded-xl hover:from-amber-300 hover:to-amber-400 transition-all shadow-lg shadow-amber-400/20 active:scale-95"
             >
               <Plus className="w-4 h-4" />
-              Add
+              Add Product
             </button>
           </div>
         ) : (
@@ -130,22 +176,23 @@ function Products() {
             className="flex items-center gap-2 px-5 py-2.5 bg-white/5 text-white font-bold rounded-xl hover:bg-white/10 border border-white/10 transition-all"
           >
             <X className="w-4 h-4" />
-            Cancel
+            Back to List
           </button>
         )}
       </div>
 
+      {/* Form View */}
       {view === "form" && (
         <form
           onSubmit={handleSubmit}
           className="bg-white/[0.02] backdrop-blur-3xl border border-white/5 rounded-3xl p-6 sm:p-8 max-w-4xl"
         >
           <div className="flex items-center gap-3 mb-8">
-            <div className="p-2 bg-yellow-400/10 rounded-xl border border-yellow-400/20">
-              <Edit2 className="w-5 h-5 text-yellow-400" />
+            <div className="p-2 bg-amber-400/10 rounded-xl border border-amber-400/20">
+              <Edit2 className="w-5 h-5 text-amber-400" />
             </div>
             <h2 className="text-xl font-bold text-white">
-              {editing ? "Edit Product" : "Add New Product"}
+              {editing ? "Edit Product Details" : "Add New Fragrance Product"}
             </h2>
           </div>
 
@@ -156,7 +203,7 @@ function Products() {
                 <div className="relative">
                   <Tag className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                   <input
-                    placeholder="Enter name"
+                    placeholder="e.g. Oud Royale EDP"
                     className={`${inputClass} pl-10`}
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -179,12 +226,33 @@ function Products() {
               <div>
                 <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Description</label>
                 <textarea
-                  placeholder="Fragrance notes, details..."
-                  className={`${inputClass} resize-none h-32`}
+                  placeholder="Fragrance notes, luxury story..."
+                  className={`${inputClass} resize-none h-28`}
                   value={form.description}
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
                   required
                 />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Top Notes</label>
+                  <input
+                    placeholder="e.g. Bergamot, Saffron"
+                    className={inputClass}
+                    value={form.topNotes}
+                    onChange={(e) => setForm({ ...form, topNotes: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Base Notes</label>
+                  <input
+                    placeholder="e.g. Amber, Vanilla, Oud"
+                    className={inputClass}
+                    value={form.baseNotes}
+                    onChange={(e) => setForm({ ...form, baseNotes: e.target.value })}
+                  />
+                </div>
               </div>
             </div>
 
@@ -194,7 +262,7 @@ function Products() {
                 <div className="relative">
                   <UploadCloud className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                   <input
-                    placeholder="https://..."
+                    placeholder="https://images.unsplash.com/..."
                     className={`${inputClass} pl-10`}
                     value={form.img}
                     onChange={(e) => setForm({ ...form, img: e.target.value })}
@@ -203,28 +271,62 @@ function Products() {
                 </div>
               </div>
 
-              {form.img && (
-                <div className="w-full h-48 bg-gray-900 border border-white/10 rounded-xl flex items-center justify-center p-4">
-                  <img src={form.img} alt="Preview" className="max-h-full object-contain" onError={(e) => e.target.src = "https://via.placeholder.com/150"} />
+              {form.img ? (
+                <div className="w-full h-56 bg-gray-950 border border-white/10 rounded-2xl flex items-center justify-center p-4 overflow-hidden relative">
+                  <img
+                    src={form.img}
+                    alt="Preview"
+                    className="max-h-full object-contain drop-shadow-xl"
+                    onError={(e) => {
+                      e.target.src = "https://via.placeholder.com/300?text=Invalid+Image+URL"
+                    }}
+                  />
+                </div>
+              ) : (
+                <div className="w-full h-56 bg-gray-950 border border-dashed border-white/10 rounded-2xl flex flex-col items-center justify-center p-4 text-gray-500">
+                  <UploadCloud className="w-8 h-8 mb-2 text-gray-600" />
+                  <span className="text-xs">Image Preview Will Appear Here</span>
                 </div>
               )}
             </div>
           </div>
 
+          {/* Sizes & Pricing */}
           <div className="border-t border-white/5 pt-8 mb-8">
-            <h3 className="text-sm font-bold text-gray-300 mb-4 uppercase tracking-wider">Sizes & Pricing</h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xs font-bold text-gray-300 uppercase tracking-wider">Sizes & Pricing Variants</h3>
+              <button
+                type="button"
+                onClick={() => setForm({
+                  ...form,
+                  sizes: [...form.sizes, { size: "100ml", price: "", stock: "In Stock" }]
+                })}
+                className="text-xs font-bold text-amber-400 hover:underline flex items-center gap-1"
+              >
+                <Plus className="w-3.5 h-3.5" /> Add Size Variant
+              </button>
+            </div>
             <div className="space-y-4">
               {form.sizes.map((s, i) => (
-                <div key={i} className="flex gap-4 p-4 bg-gray-900 border border-white/5 rounded-2xl items-center">
-                  <div className="w-24 px-4 py-2 bg-white/5 rounded-xl text-center text-sm font-bold text-white">
-                    {s.size}
-                  </div>
-                  
-                  <div className="flex-1">
+                <div key={i} className="flex flex-wrap sm:flex-nowrap gap-4 p-4 bg-gray-950 border border-white/5 rounded-2xl items-center">
+                  <input
+                    type="text"
+                    placeholder="Size (e.g. 50ml)"
+                    className="w-28 px-4 py-2 bg-gray-900 border border-white/10 rounded-xl text-white font-bold text-sm focus:outline-none focus:border-amber-400"
+                    value={s.size}
+                    onChange={(e) => {
+                      const updated = [...form.sizes]
+                      updated[i].size = e.target.value
+                      setForm({ ...form, sizes: updated })
+                    }}
+                    required
+                  />
+
+                  <div className="flex-1 min-w-[120px]">
                     <input
                       type="number"
                       placeholder="Price (₹)"
-                      className="w-full px-4 py-2 bg-gray-950 border border-white/10 rounded-xl text-white placeholder-gray-500 text-sm focus:outline-none focus:border-yellow-400 transition-all"
+                      className="w-full px-4 py-2 bg-gray-900 border border-white/10 rounded-xl text-white placeholder-gray-500 text-sm focus:outline-none focus:border-amber-400"
                       value={s.price}
                       onChange={(e) => {
                         const updated = [...form.sizes]
@@ -235,9 +337,9 @@ function Products() {
                     />
                   </div>
 
-                  <div className="flex-1">
+                  <div className="w-36">
                     <select
-                      className="w-full px-4 py-2 bg-gray-950 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-yellow-400 transition-all appearance-none cursor-pointer"
+                      className="w-full px-4 py-2 bg-gray-900 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-amber-400 appearance-none cursor-pointer"
                       value={s.stock}
                       onChange={(e) => {
                         const updated = [...form.sizes]
@@ -249,107 +351,141 @@ function Products() {
                       <option value="Out of Stock">Out of Stock</option>
                     </select>
                   </div>
+
+                  {form.sizes.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const updated = form.sizes.filter((_, idx) => idx !== i)
+                        setForm({ ...form, sizes: updated })
+                      }}
+                      className="p-2 text-rose-400 hover:bg-rose-500/10 rounded-xl transition-colors"
+                      title="Remove size"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
           </div>
 
           <div className="flex items-center gap-4 border-t border-white/5 pt-6">
-            <button type="submit" className="flex items-center gap-2 px-8 py-3 bg-yellow-400 text-gray-900 font-bold rounded-xl hover:bg-yellow-300 transition-all shadow-lg shadow-yellow-400/20">
-              <CheckCircle2Icon className="w-5 h-5" />
-              {editing ? "Save Changes" : "Create Product"}
+            <button
+              type="submit"
+              className="flex items-center gap-2 px-8 py-3.5 bg-gradient-to-r from-amber-400 to-amber-500 text-gray-950 font-bold text-sm rounded-xl hover:from-amber-300 hover:to-amber-400 transition-all shadow-lg shadow-amber-400/20 active:scale-95"
+            >
+              <CheckCircle2 className="w-5 h-5" />
+              {editing ? "Save Product Changes" : "Create Product Document"}
             </button>
-            <button type="button" onClick={() => setView("list")} className="px-6 py-3 bg-white/5 text-white font-bold rounded-xl hover:bg-white/10 border border-white/10 transition-all">
+            <button
+              type="button"
+              onClick={() => setView("list")}
+              className="px-6 py-3.5 bg-white/5 text-white font-bold text-sm rounded-xl hover:bg-white/10 border border-white/10 transition-all"
+            >
               Cancel
             </button>
           </div>
         </form>
       )}
 
+      {/* List View */}
       {view === "list" && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {loading ? (
             <div className="col-span-full py-20 flex flex-col items-center justify-center">
-              <div className="w-10 h-10 border-4 border-white/10 border-t-yellow-400 rounded-full animate-spin mb-4"></div>
-              <p className="text-gray-400 font-medium">Loading products...</p>
+              <div className="w-10 h-10 border-4 border-white/10 border-t-amber-400 rounded-full animate-spin mb-4"></div>
+              <p className="text-gray-400 font-medium text-sm">Loading products catalog...</p>
             </div>
           ) : filteredProducts.length === 0 ? (
-            <div className="col-span-full py-20 flex flex-col items-center justify-center bg-white/[0.02] border border-white/5 rounded-3xl">
+            <div className="col-span-full py-20 flex flex-col items-center justify-center bg-white/[0.02] border border-white/5 rounded-3xl text-center p-6">
               <Package className="w-16 h-16 text-gray-600 mb-4" />
-              <p className="text-lg font-bold text-white">No products found</p>
-              <p className="text-sm text-gray-400">Try adjusting your search or add a new product.</p>
+              <p className="text-lg font-bold text-white mb-1">No products found</p>
+              <p className="text-sm text-gray-400 max-w-sm mb-6">Try adjusting your search query or add a new fragrance product.</p>
+              <button
+                onClick={() => {
+                  resetForm()
+                  setView("form")
+                }}
+                className="px-6 py-2.5 bg-amber-400 text-gray-950 font-bold text-xs rounded-xl hover:bg-amber-300 transition-all"
+              >
+                Add Product
+              </button>
             </div>
           ) : (
-            filteredProducts.map((p) => (
-              <div
-                key={p.id}
-                className="bg-white/[0.02] backdrop-blur-xl border border-white/5 rounded-3xl overflow-hidden shadow-xl hover:border-white/10 transition-colors flex flex-col group"
-              >
-                {/* Image */}
-                <div className="h-48 bg-gray-900 flex items-center justify-center relative overflow-hidden p-4">
-                  <div className="absolute inset-0 bg-gradient-to-t from-gray-900 to-transparent opacity-50"></div>
-                  <img
-                    src={p.img}
-                    className="max-h-full object-contain relative z-10 transition-transform duration-500 group-hover:scale-110 drop-shadow-2xl"
-                    alt={p.name}
-                  />
-                  <span className="absolute top-4 left-4 z-20 px-3 py-1 bg-white/10 backdrop-blur-md rounded-full text-[10px] font-bold tracking-wider text-white border border-white/10 uppercase">
-                    {p.category}
-                  </span>
-                </div>
+            filteredProducts.map((p) => {
+              const productId = p.id || p._id
 
-                <div className="p-5 flex-1 flex flex-col">
-                  <h3 className="text-lg font-bold text-white mb-4 line-clamp-1">{p.name}</h3>
+              return (
+                <div
+                  key={productId}
+                  className="bg-white/[0.02] backdrop-blur-xl border border-white/5 rounded-3xl overflow-hidden shadow-xl hover:border-white/10 transition-colors flex flex-col group"
+                >
+                  {/* Image */}
+                  <div className="h-52 bg-gray-950 flex items-center justify-center relative overflow-hidden p-4">
+                    <div className="absolute inset-0 bg-gradient-to-t from-gray-950 via-transparent to-transparent opacity-60"></div>
+                    <img
+                      src={p.img}
+                      className="max-h-full object-contain relative z-10 transition-transform duration-500 group-hover:scale-110 drop-shadow-2xl"
+                      alt={p.name}
+                      onError={(e) => {
+                        e.target.src = "https://via.placeholder.com/300?text=No+Image"
+                      }}
+                    />
+                    <span className="absolute top-4 left-4 z-20 px-3 py-1 bg-white/10 backdrop-blur-md rounded-full text-[10px] font-bold tracking-wider text-white border border-white/10 uppercase">
+                      {p.category}
+                    </span>
+                  </div>
 
-                  <div className="space-y-2 mb-6 flex-1">
-                    {p.sizes.map((s, i) => (
-                      <div key={i} className="flex items-center justify-between bg-white/5 rounded-xl p-2.5 border border-white/5">
-                        <div className="flex items-center gap-3">
-                          <span className="text-sm font-bold text-gray-300 w-12">{s.size}</span>
-                          <span className="text-sm font-black text-yellow-400">₹{s.price}</span>
+                  <div className="p-5 flex-1 flex flex-col">
+                    <h3 className="text-lg font-bold text-white mb-3 line-clamp-1">{p.name}</h3>
+
+                    <div className="space-y-2 mb-6 flex-1">
+                      {p.sizes?.map((s, i) => (
+                        <div key={i} className="flex items-center justify-between bg-white/5 rounded-xl p-2.5 border border-white/5">
+                          <div className="flex items-center gap-3">
+                            <span className="text-xs font-bold text-gray-300 w-12">{s.size}</span>
+                            <span className="text-xs font-black text-amber-400">₹{Number(s.price).toLocaleString()}</span>
+                          </div>
+                          <button
+                            onClick={() => toggleStock(p, i)}
+                            className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border transition-colors ${
+                              s.stock === "In Stock"
+                                ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20"
+                                : "bg-rose-500/10 text-rose-400 border-rose-500/20 hover:bg-rose-500/20"
+                            }`}
+                          >
+                            {s.stock}
+                          </button>
                         </div>
-                        <button
-                          onClick={() => toggleStock(p, i)}
-                          className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border transition-colors ${
-                            s.stock === "In Stock"
-                              ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20"
-                              : "bg-rose-500/10 text-rose-400 border-rose-500/20 hover:bg-rose-500/20"
-                          }`}
-                        >
-                          {s.stock}
-                        </button>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
 
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => handleEdit(p)}
-                      className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-white/5 text-white font-semibold rounded-xl hover:bg-white/10 border border-white/10 transition-all"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDelete(p.id)}
-                      className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-rose-500/10 text-rose-400 font-semibold rounded-xl hover:bg-rose-500/20 border border-rose-500/20 transition-all"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                      Delete
-                    </button>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => handleEdit(p)}
+                        className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-white/5 text-white font-semibold text-xs rounded-xl hover:bg-white/10 border border-white/10 transition-all active:scale-95"
+                      >
+                        <Edit2 className="w-3.5 h-3.5 text-amber-400" />
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDelete(productId)}
+                        className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-rose-500/10 text-rose-400 font-semibold text-xs rounded-xl hover:bg-rose-500/20 border border-rose-500/20 transition-all active:scale-95"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        Delete
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))
+              )
+            })
           )}
         </div>
       )}
     </div>
   )
-}
-
-function CheckCircle2Icon({ className }) {
-  return <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m9 12 2 2 4-4"/></svg>
 }
 
 export default Products

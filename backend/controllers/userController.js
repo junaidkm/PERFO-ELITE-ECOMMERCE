@@ -5,7 +5,7 @@ const getUserProfile = async (req, res) => {
   try {
     const userId = req.params.id || req.user.id;
 
-    const user = await User.findById(userId).select("-password").exec();
+    const user = await User.findById(userId).select("-password");
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
@@ -20,7 +20,7 @@ const getUserProfile = async (req, res) => {
 // Admin: Get all users using Mongoose query
 const getAllUsers = async (req, res) => {
   try {
-    const users = await User.find().select("-password").sort({ createdAt: -1 }).exec();
+    const users = await User.find().select("-password").sort({ createdAt: -1 })
     return res.json(users);
   } catch (err) {
     console.error("Get all users error:", err);

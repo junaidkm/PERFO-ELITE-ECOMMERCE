@@ -60,6 +60,7 @@ userSchema.post("findOneAndDelete", async function (doc) {
 });
 
 
+
 userSchema.set("toJSON", {
   virtuals: true,
   transform: function (doc, ret, options) {

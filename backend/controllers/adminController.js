@@ -8,7 +8,7 @@ const getAdminDashboardStats = async (req, res) => {
     const [totalUsers, totalProducts, totalOrders] = await Promise.all([
       User.countDocuments(),
       Product.countDocuments(),
-      Order.countDocuments()
+      Order.countDocuments(),
     ]);
 
     // 2. Total Revenue using Mongoose Aggregate pipeline
@@ -23,14 +23,14 @@ const getAdminDashboardStats = async (req, res) => {
       { $unwind: "$sizes" },
       {
         $group: {
-          _id: "$sizes.stock",
-          count: { $sum: 1 }
+          _id: "$sizes.stock",  
+          count: { $sum: 1 }   
         }
-      }
+      } 
     ]);
 
     let inStock = 0;
-    let outOfStock = 0;
+    let outOfStock = 0; 
     stockStats.forEach((st) => {
       if (st._id === "In Stock") inStock = st.count;
       else if (st._id === "Out of Stock") outOfStock = st.count;
@@ -41,7 +41,7 @@ const getAdminDashboardStats = async (req, res) => {
       .populate("userId", "name email")
       .sort({ createdAt: -1 })
       .limit(5)
-      .exec();
+      
 
     // 5. Sales trend for the last 7 days using Mongoose Aggregate pipeline
     const sevenDaysAgo = new Date();
@@ -83,7 +83,7 @@ const getAdminDashboardStats = async (req, res) => {
     return res.json({
       stats: {
         users: totalUsers,
-        products: totalProducts,
+        products: totalProducts, 
         orders: totalOrders,
         revenue: totalRevenue,
         inStock,

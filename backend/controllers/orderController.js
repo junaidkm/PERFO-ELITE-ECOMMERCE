@@ -17,7 +17,7 @@ const getAllAdminOrders = async (req, res) => {
     const orders = await Order.find()
       .populate("userId", "name email")
       .sort({ createdAt: -1 })
-      .exec();
+      
     return res.json(orders);
   } catch (err) {
     console.error("Get all admin orders error:", err);
