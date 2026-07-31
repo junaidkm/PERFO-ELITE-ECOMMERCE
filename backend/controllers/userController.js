@@ -1,11 +1,10 @@
 const User = require("../models/User");
 
-// Get user profile by ID or logged-in user
 const getUserProfile = async (req, res) => {
   try {
     const userId = req.params.id || req.user.id;
-
     const user = await User.findById(userId).select("-password");
+
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
@@ -17,10 +16,9 @@ const getUserProfile = async (req, res) => {
   }
 };
 
-// Admin: Get all users using Mongoose query
 const getAllUsers = async (req, res) => {
   try {
-    const users = await User.find().select("-password").sort({ createdAt: -1 })
+    const users = await User.find().select("-password").sort({ createdAt: -1 });
     return res.json(users);
   } catch (err) {
     console.error("Get all users error:", err);
@@ -28,7 +26,6 @@ const getAllUsers = async (req, res) => {
   }
 };
 
-// Admin: Update user status, role, or block using Mongoose findByIdAndUpdate
 const updateUser = async (req, res) => {
   try {
     const { id } = req.params;
@@ -50,11 +47,9 @@ const updateUser = async (req, res) => {
   }
 };
 
-// Admin: Delete user using Mongoose findByIdAndDelete
 const deleteUser = async (req, res) => {
   try {
     const { id } = req.params;
-
     const user = await User.findByIdAndDelete(id);
 
     if (!user) {

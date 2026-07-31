@@ -3,7 +3,7 @@ const Product = require("../models/Product");
 const getProducts = async (req, res) => {
   try {
     const { search, category, sort, page, limit } = req.query;
-    let query = {};
+    const query = {};
 
     if (search) {
       query.$or = [
@@ -16,14 +16,8 @@ const getProducts = async (req, res) => {
       query.category = category;
     }
 
-    let sortQuery = {};
-    if (sort === "low") {
-      sortQuery = { "sizes.0.price": 1 };
-    } else if (sort === "high") {
-      sortQuery = { "sizes.0.price": -1 };
-    } else {
-      sortQuery = { createdAt: -1 };
-    }
+    const sortMap = { low: { "sizes.0.price": 1 }, high: { "sizes.0.price": -1 } };
+    const sortQuery = sortMap[sort] || { createdAt: -1 };
 
     if (!page && !limit) {
       const products = await Product.find(query).sort(sortQuery);
@@ -34,13 +28,12 @@ const getProducts = async (req, res) => {
     const limitNum = parseInt(limit) || 8;
     const skip = (pageNum - 1) * limitNum;
 
-    const totalProducts = await Product.countDocuments(query);
-    const products = await Product.find(query)
-      .sort(sortQuery)
-      .skip(skip)
-      .limit(limitNum);
+    const [totalProducts, products, categories] = await Promise.all([
+      Product.countDocuments(query),
+      Product.find(query).sort(sortQuery).skip(skip).limit(limitNum),
+      Product.distinct("category", { category: { $exists: true, $ne: null } })
+    ]);
 
-    const categories = await Product.distinct("category", { category: { $exists: true, $ne: null } });
     const totalPages = Math.ceil(totalProducts / limitNum);
 
     return res.json({
@@ -124,7 +117,6 @@ const updateProduct = async (req, res) => {
 const deleteProduct = async (req, res) => {
   try {
     const { id } = req.params;
-
     const product = await Product.findByIdAndDelete(id);
 
     if (!product) {

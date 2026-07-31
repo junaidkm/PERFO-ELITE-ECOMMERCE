@@ -11,12 +11,12 @@ const { protect, admin } = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
-// User order routes
+// User routes
 router.get("/", protect, getOrders);
 router.post("/", protect, createOrder);
 router.put("/:orderId/cancel", protect, cancelOrder);
 
-// Admin order routes
+// Admin routes
 router.get("/admin/all", protect, admin, getAllAdminOrders);
 router.put("/:orderId/status", protect, admin, updateOrderStatus);
 router.delete("/:orderId", protect, admin, deleteOrder);

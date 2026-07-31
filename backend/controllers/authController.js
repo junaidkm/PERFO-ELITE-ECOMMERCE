@@ -1,23 +1,19 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 
-
 const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, {
-    expiresIn: "30d"
-  });
+  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: "30d" });
 };
 
 const COOKIE_OPTIONS = {
-  httpOnly: true,                               
-  secure: "process.env.NODE_ENV" === "production", 
-  sameSite: "lax",                             
-  maxAge: 30 * 24 * 60 * 60 * 1000,            
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "lax",
+  maxAge: 30 * 24 * 60 * 60 * 1000,
 };
 
 const registerUser = async (req, res) => {
   const { name, email, password } = req.body;
-
 
   if (!name || !email || !password) {
     return res.status(400).json({ message: "Please fill in all fields" });
@@ -29,16 +25,9 @@ const registerUser = async (req, res) => {
       return res.status(400).json({ message: "User already exists" });
     }
 
-    const user = new User({
-      name,
-      email,
-      password
-    });
-
-    await user.save();
-
+    const user = await User.create({ name, email, password });
     const token = generateToken(user._id);
-    
+
     res.cookie("token", token, COOKIE_OPTIONS);
 
     return res.status(201).json({
@@ -61,13 +50,13 @@ const loginUser = async (req, res) => {
   const { email, password } = req.body;
 
   if (!email || !password) {
-    return res.status(400).json({ message: "Please enter email and password" })
+    return res.status(400).json({ message: "Please enter email and password" });
   }
 
   try {
     const user = await User.findOne({ email });
 
-    if (!user) {
+    if (!user || !(await user.comparePassword(password))) {
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
@@ -75,20 +64,13 @@ const loginUser = async (req, res) => {
       return res.status(403).json({ message: "Your account is blocked" });
     }
 
-    const isMatch = await user.comparePassword(password);
-    if (!isMatch) {
-      return res.status(401).json({ message: "Invalid email or password" });
-    }
-
     user.isOnline = true;
     user.lastLogin = new Date().toISOString();
     await user.save();
 
     const token = generateToken(user._id);
-   
     res.cookie("token", token, COOKIE_OPTIONS);
-    
-    
+
     return res.json({
       token,
       user: {
@@ -112,7 +94,7 @@ const logoutUser = async (req, res) => {
       user.isOnline = false;
       await user.save();
     }
-    
+
     res.clearCookie("token", { ...COOKIE_OPTIONS, maxAge: 0 });
     return res.json({ message: "Logged out successfully" });
   } catch (err) {

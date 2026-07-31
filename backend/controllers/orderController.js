@@ -1,6 +1,5 @@
 const Order = require("../models/Order");
 
-// User: Get logged-in user's orders
 const getOrders = async (req, res) => {
   try {
     const orders = await Order.find({ userId: req.user.id }).sort({ createdAt: -1 });
@@ -11,13 +10,11 @@ const getOrders = async (req, res) => {
   }
 };
 
-// Admin: Get all orders across all users using Mongoose query
 const getAllAdminOrders = async (req, res) => {
   try {
     const orders = await Order.find()
       .populate("userId", "name email")
-      .sort({ createdAt: -1 })
-      
+      .sort({ createdAt: -1 });
     return res.json(orders);
   } catch (err) {
     console.error("Get all admin orders error:", err);
@@ -25,7 +22,6 @@ const getAllAdminOrders = async (req, res) => {
   }
 };
 
-// User: Create new order using Mongoose model method
 const createOrder = async (req, res) => {
   try {
     const { items, total, address, paymentMethod } = req.body;
@@ -55,11 +51,9 @@ const createOrder = async (req, res) => {
   }
 };
 
-// User: Cancel user's own order
 const cancelOrder = async (req, res) => {
   try {
     const { orderId } = req.params;
-
     const order = await Order.findOne({ _id: orderId, userId: req.user.id });
 
     if (!order) {
@@ -80,7 +74,6 @@ const cancelOrder = async (req, res) => {
   }
 };
 
-// Admin: Update order status using Mongoose findByIdAndUpdate
 const updateOrderStatus = async (req, res) => {
   try {
     const { orderId } = req.params;
@@ -107,11 +100,9 @@ const updateOrderStatus = async (req, res) => {
   }
 };
 
-// Admin: Delete order using Mongoose findByIdAndDelete
 const deleteOrder = async (req, res) => {
   try {
     const { orderId } = req.params;
-
     const order = await Order.findByIdAndDelete(orderId);
 
     if (!order) {

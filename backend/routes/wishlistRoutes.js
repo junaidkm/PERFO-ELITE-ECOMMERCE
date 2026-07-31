@@ -11,13 +11,15 @@ const { protect } = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
-router.get("/", protect, getWishlist);
-router.get("/:userId", protect, getWishlist);
-router.post("/", protect, addToWishlist);
-router.post("/toggle", protect, toggleWishlist);
-router.put("/", protect, updateWishlist);
-router.put("/:userId", protect, updateWishlist);
-router.delete("/clear", protect, clearWishlist);
-router.delete("/:productId", protect, removeFromWishlist);
+router.use(protect);
+
+router.get("/", getWishlist);
+router.get("/:userId", getWishlist);
+router.post("/", addToWishlist);
+router.post("/toggle", toggleWishlist);
+router.put("/", updateWishlist);
+router.put("/:userId", updateWishlist);
+router.delete("/clear", clearWishlist);
+router.delete("/:productId", removeFromWishlist);
 
 module.exports = router;

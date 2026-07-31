@@ -9,12 +9,10 @@ const { protect, admin } = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
-// User profile route
 router.get("/profile", protect, getUserProfile);
-
-// Admin user management routes
-router.get("/", protect, admin, getAllUsers);
 router.get("/:id", protect, getUserProfile);
+
+router.get("/", protect, admin, getAllUsers);
 router.put("/:id", protect, admin, updateUser);
 router.patch("/:id", protect, admin, updateUser);
 router.delete("/:id", protect, admin, deleteUser);

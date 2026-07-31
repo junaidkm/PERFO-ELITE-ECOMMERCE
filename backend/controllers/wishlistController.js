@@ -3,16 +3,14 @@ const Wishlist = require("../models/Wishlist");
 const getOrCreateWishlist = async (userId) => {
   let wishlist = await Wishlist.findOne({ userId });
   if (!wishlist) {
-    wishlist = new Wishlist({ userId, items: [] });
-    await wishlist.save();
+    wishlist = await Wishlist.create({ userId, items: [] });
   }
   return wishlist;
 };
 
 const getWishlist = async (req, res) => {
   try {
-    const userId = req.user.id;
-    const wishlistDoc = await getOrCreateWishlist(userId);
+    const wishlistDoc = await getOrCreateWishlist(req.user.id);
     return res.json(wishlistDoc.items || []);
   } catch (err) {
     console.error("Get wishlist error:", err);
@@ -22,21 +20,16 @@ const getWishlist = async (req, res) => {
 
 const addToWishlist = async (req, res) => {
   try {
-    const userId = req.user.id;
     const { productId, name, img, price } = req.body;
 
     if (!productId) {
       return res.status(400).json({ message: "Product ID is required" });
     }
 
-    const wishlistDoc = await getOrCreateWishlist(userId);
-
-    const exists = wishlistDoc.items.some(
-      (item) => String(item.productId) === String(productId)
-    );
+    const wishlistDoc = await getOrCreateWishlist(req.user.id);
+    const exists = wishlistDoc.items.some((item) => String(item.productId) === String(productId));
 
     if (!exists) {
-      // Mongoose DocumentArray push subdocument method
       wishlistDoc.items.push({ productId, name, img, price });
       await wishlistDoc.save();
     }
@@ -50,25 +43,21 @@ const addToWishlist = async (req, res) => {
 
 const toggleWishlist = async (req, res) => {
   try {
-    const userId = req.user.id;
     const { productId, name, img, price } = req.body;
 
     if (!productId) {
       return res.status(400).json({ message: "Product ID is required" });
     }
 
-    const wishlistDoc = await getOrCreateWishlist(userId);
-
-    const existingItem = wishlistDoc.items.find(
+    const wishlistDoc = await getOrCreateWishlist(req.user.id);
+    const existingIndex = wishlistDoc.items.findIndex(
       (item) => String(item.productId) === String(productId)
     );
 
     let isAdded = false;
-    if (existingItem) {
-      // Mongoose DocumentArray pull subdocument method
-      wishlistDoc.items.pull(existingItem._id);
+    if (existingIndex !== -1) {
+      wishlistDoc.items.splice(existingIndex, 1);
     } else {
-      // Mongoose DocumentArray push subdocument method
       wishlistDoc.items.push({ productId, name, img, price });
       isAdded = true;
     }
@@ -88,14 +77,13 @@ const toggleWishlist = async (req, res) => {
 
 const updateWishlist = async (req, res) => {
   try {
-    const userId = req.user.id;
     const items = req.body.wishlist || req.body.items;
 
     if (!Array.isArray(items)) {
       return res.status(400).json({ message: "Wishlist must be an array" });
     }
 
-    const wishlistDoc = await getOrCreateWishlist(userId);
+    const wishlistDoc = await getOrCreateWishlist(req.user.id);
     wishlistDoc.items = items;
     await wishlistDoc.save();
 
@@ -108,24 +96,14 @@ const updateWishlist = async (req, res) => {
 
 const removeFromWishlist = async (req, res) => {
   try {
-    const userId = req.user.id;
     const { productId } = req.params;
+    const wishlistDoc = await getOrCreateWishlist(req.user.id);
 
-    const wishlistDoc = await getOrCreateWishlist(userId);
-    
-    const matchingItem = wishlistDoc.items.find(
-      (item) => String(item.productId) === String(productId) || String(item._id) === String(productId)
+    wishlistDoc.items = wishlistDoc.items.filter(
+      (item) => String(item.productId) !== String(productId) && String(item._id) !== String(productId)
     );
 
-    if (matchingItem) {
-      // Mongoose DocumentArray pull subdocument method
-      wishlistDoc.items.pull(matchingItem._id);
-    } else {
-      wishlistDoc.items.pull({ productId });
-    }
-
     await wishlistDoc.save();
-
     return res.json(wishlistDoc.items);
   } catch (err) {
     console.error("Remove from wishlist error:", err);
@@ -135,9 +113,7 @@ const removeFromWishlist = async (req, res) => {
 
 const clearWishlist = async (req, res) => {
   try {
-    const userId = req.user.id;
-
-    const wishlistDoc = await getOrCreateWishlist(userId);
+    const wishlistDoc = await getOrCreateWishlist(req.user.id);
     wishlistDoc.items = [];
     await wishlistDoc.save();
 

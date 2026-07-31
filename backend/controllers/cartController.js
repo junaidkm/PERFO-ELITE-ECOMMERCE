@@ -1,11 +1,9 @@
 const Cart = require("../models/Cart");
 
-// Helper function to get or create a cart document
 const getOrCreateCart = async (userId) => {
   let cart = await Cart.findOne({ userId });
   if (!cart) {
-    cart = new Cart({ userId, items: [] });
-    await cart.save();
+    cart = await Cart.create({ userId, items: [] });
   }
   return cart;
 };
@@ -30,8 +28,6 @@ const addToCart = async (req, res) => {
     }
 
     const cart = await getOrCreateCart(userId);
-
-    // Check if item exists in Mongoose subdocument array
     const existingItem = cart.items.find(
       (item) => String(item.productId) === String(productId) && item.size === size
     );
@@ -39,7 +35,6 @@ const addToCart = async (req, res) => {
     if (existingItem) {
       existingItem.quantity += Number(quantity);
     } else {
-      // Use Mongoose subdocument array push method
       cart.items.push({ productId, size, quantity: Number(quantity) });
     }
 
@@ -62,18 +57,14 @@ const updateCart = async (req, res) => {
     }
 
     const cartDoc = await getOrCreateCart(userId);
-
-    const updatedItems = cart.map((item) => ({
+    cartDoc.items = cart.map((item) => ({
       productId: item.productId || item.id,
       size: item.size,
-      quantity: item.quantity,
+      quantity: item.quantity
     }));
 
-    // Update Mongoose subdocument array and save document
-    cartDoc.items = updatedItems;
     await cartDoc.save();
     await cartDoc.populate("items.productId");
-
     return res.json(cartDoc);
   } catch (err) {
     console.error("Update cart error:", err);
@@ -87,8 +78,6 @@ const removeFromCart = async (req, res) => {
     const { itemId } = req.params;
 
     const cartDoc = await getOrCreateCart(userId);
-
-    // Mongoose DocumentArray pull method for subdocuments
     cartDoc.items.pull({ _id: itemId });
     await cartDoc.save();
     await cartDoc.populate("items.productId");
@@ -104,8 +93,6 @@ const clearCart = async (req, res) => {
   try {
     const userId = req.user.id;
     const cartDoc = await getOrCreateCart(userId);
-
-    // Empty items array and save document with Mongoose
     cartDoc.items = [];
     await cartDoc.save();
 
@@ -121,5 +108,5 @@ module.exports = {
   addToCart,
   updateCart,
   removeFromCart,
-  clearCart,
+  clearCart
 };

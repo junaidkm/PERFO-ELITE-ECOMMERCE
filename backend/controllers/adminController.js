@@ -4,46 +4,33 @@ const Order = require("../models/Order");
 
 const getAdminDashboardStats = async (req, res) => {
   try {
-    // 1. Total document counts using Mongoose countDocuments
     const [totalUsers, totalProducts, totalOrders] = await Promise.all([
       User.countDocuments(),
       Product.countDocuments(),
-      Order.countDocuments(),
+      Order.countDocuments()
     ]);
 
-    // 2. Total Revenue using Mongoose Aggregate pipeline
     const revenueResult = await Order.aggregate([
       { $match: { status: { $ne: "Cancelled" } } },
       { $group: { _id: null, totalRevenue: { $sum: "$total" } } }
     ]);
     const totalRevenue = revenueResult[0]?.totalRevenue || 0;
 
-    // 3. Stock counts using Mongoose Aggregate pipeline ($unwind + $group)
     const stockStats = await Product.aggregate([
       { $unwind: "$sizes" },
-      {
-        $group: {
-          _id: "$sizes.stock",  
-          count: { $sum: 1 }   
-        }
-      } 
+      { $group: { _id: "$sizes.stock", count: { $sum: 1 } } }
     ]);
 
-    let inStock = 0;
-    let outOfStock = 0; 
-    stockStats.forEach((st) => {
-      if (st._id === "In Stock") inStock = st.count;
-      else if (st._id === "Out of Stock") outOfStock = st.count;
-    });
+    const stockCounts = stockStats.reduce((acc, curr) => {
+      acc[curr._id] = curr.count;
+      return acc;
+    }, {});
 
-    // 4. Recent 5 Orders using Mongoose populate & limit
     const recentOrders = await Order.find()
       .populate("userId", "name email")
       .sort({ createdAt: -1 })
-      .limit(5)
-      
+      .limit(5);
 
-    // 5. Sales trend for the last 7 days using Mongoose Aggregate pipeline
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
@@ -56,38 +43,32 @@ const getAdminDashboardStats = async (req, res) => {
       },
       {
         $group: {
-          _id: {
-            $dateToString: { format: "%b %d", date: "$createdAt" }
-          },
+          _id: { $dateToString: { format: "%b %d", date: "$createdAt" } },
           sales: { $sum: "$total" }
         }
       }
     ]);
 
-    const salesMap = {};
-    dailySalesAgg.forEach((item) => {
-      salesMap[item._id] = item.sales;
-    });
+    const salesMap = dailySalesAgg.reduce((acc, curr) => {
+      acc[curr._id] = curr.sales;
+      return acc;
+    }, {});
 
-    const salesData = [];
-    for (let i = 6; i >= 0; i--) {
+    const salesData = Array.from({ length: 7 }, (_, i) => {
       const d = new Date();
-      d.setDate(d.getDate() - i);
+      d.setDate(d.getDate() - (6 - i));
       const dateStr = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-      salesData.push({
-        date: dateStr,
-        sales: salesMap[dateStr] || 0
-      });
-    }
+      return { date: dateStr, sales: salesMap[dateStr] || 0 };
+    });
 
     return res.json({
       stats: {
         users: totalUsers,
-        products: totalProducts, 
+        products: totalProducts,
         orders: totalOrders,
         revenue: totalRevenue,
-        inStock,
-        outOfStock
+        inStock: stockCounts["In Stock"] || 0,
+        outOfStock: stockCounts["Out of Stock"] || 0
       },
       recentOrders,
       salesData
