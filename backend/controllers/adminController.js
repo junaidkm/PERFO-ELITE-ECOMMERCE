@@ -21,12 +21,16 @@ const getAdminDashboardStats = async (req, res) => {
       { $group: { _id: "$sizes.stock", count: { $sum: 1 } } }
     ]);
 
-    const stockCounts = Object.fromEntries(stockStats.map(({ _id, count }) => [_id, count]));
+    const stockCounts = {};
+    for (const stat of stockStats) {
+      if (stat._id) stockCounts[stat._id] = stat.count;
+    }
 
     const recentOrders = await Order.find()
       .populate("userId", "name email")
       .sort({ createdAt: -1 })
-      .limit(5);
+      .limit(5)
+      .lean();
 
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
@@ -46,14 +50,18 @@ const getAdminDashboardStats = async (req, res) => {
       }
     ]);
 
-    const salesMap = Object.fromEntries(dailySalesAgg.map(({ _id, sales }) => [_id, sales]));
+    const salesMap = {};
+    for (const item of dailySalesAgg) {
+      if (item._id) salesMap[item._id] = item.sales;
+    }
 
-    const salesData = Array.from({ length: 7 }, (_, i) => {
+    const salesData = [];
+    for (let i = 0; i < 7; i++) {
       const d = new Date();
       d.setDate(d.getDate() - (6 - i));
       const dateStr = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-      return { date: dateStr, sales: salesMap[dateStr] || 0 };
-    });
+      salesData[i] = { date: dateStr, sales: salesMap[dateStr] || 0 };
+    }
 
     return res.json({
       stats: {

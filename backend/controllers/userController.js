@@ -3,7 +3,7 @@ const User = require("../models/User");
 const getUserProfile = async (req, res) => {
   try {
     const userId = req.params.id || req.user.id;
-    const user = await User.findById(userId).select("-password");
+    const user = await User.findById(userId).select("-password").lean();
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -18,7 +18,7 @@ const getUserProfile = async (req, res) => {
 
 const getAllUsers = async (req, res) => {
   try {
-    const users = await User.find().select("-password").sort({ createdAt: -1 });
+    const users = await User.find().select("-password").sort({ createdAt: -1 }).lean();
     return res.json(users);
   } catch (err) {
     console.error("Get all users error:", err);
@@ -29,12 +29,14 @@ const getAllUsers = async (req, res) => {
 const updateUser = async (req, res) => {
   try {
     const { id } = req.params;
+    const updateFields = { ...(req.body || {}) };
+    delete updateFields.password;
 
     const user = await User.findByIdAndUpdate(
       id,
-      { $set: req.body },
+      { $set: updateFields },
       { returnDocument: "after", runValidators: true }
-    ).select("-password");
+    ).select("-password").lean();
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -50,7 +52,7 @@ const updateUser = async (req, res) => {
 const deleteUser = async (req, res) => {
   try {
     const { id } = req.params;
-    const user = await User.findByIdAndDelete(id);
+    const user = await User.findByIdAndDelete(id).lean();
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });

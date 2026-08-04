@@ -20,7 +20,7 @@ const registerUser = async (req, res) => {
   }
 
   try {
-    const userExists = await User.findOne({ email });
+    const userExists = await User.exists({ email });
     if (userExists) {
       return res.status(400).json({ message: "User already exists" });
     }
@@ -64,9 +64,9 @@ const loginUser = async (req, res) => {
       return res.status(403).json({ message: "Your account is blocked" });
     }
 
-    user.isOnline = true;
-    user.lastLogin = new Date().toISOString();
-    await user.save();
+    await User.findByIdAndUpdate(user._id, {
+      $set: { isOnline: true, lastLogin: new Date().toISOString() }
+    });
 
     const token = generateToken(user._id);
     res.cookie("token", token, COOKIE_OPTIONS);
@@ -89,11 +89,9 @@ const loginUser = async (req, res) => {
 
 const logoutUser = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id);
-    if (user) {
-      user.isOnline = false;
-      await user.save();
-    }
+    await User.findByIdAndUpdate(req.user.id, {
+      $set: { isOnline: false }
+    }).lean();
 
     res.clearCookie("token", { ...COOKIE_OPTIONS, maxAge: 0 });
     return res.json({ message: "Logged out successfully" });

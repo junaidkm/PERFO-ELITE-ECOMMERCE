@@ -2,7 +2,7 @@ const Order = require("../models/Order");
 
 const getOrders = async (req, res) => {
   try {
-    const orders = await Order.find({ userId: req.user.id }).sort({ createdAt: -1 });
+    const orders = await Order.find({ userId: req.user.id }).sort({ createdAt: -1 }).lean();
     return res.json(orders);
   } catch (err) {
     console.error("Get orders error:", err);
@@ -14,7 +14,8 @@ const getAllAdminOrders = async (req, res) => {
   try {
     const orders = await Order.find()
       .populate("userId", "name email")
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
     return res.json(orders);
   } catch (err) {
     console.error("Get all admin orders error:", err);
@@ -26,7 +27,7 @@ const createOrder = async (req, res) => {
   try {
     const { items, total, address, paymentMethod } = req.body;
 
-    if (!items || !Array.isArray(items) || items.length === 0) {
+    if (!items || typeof items !== "object" || typeof items.length !== "number" || items.length === 0) {
       return res.status(400).json({ message: "Order items are required" });
     }
     if (!address || !address.name || !address.phone || !address.city || !address.pincode || !address.addressLine) {
@@ -54,18 +55,19 @@ const createOrder = async (req, res) => {
 const cancelOrder = async (req, res) => {
   try {
     const { orderId } = req.params;
-    const order = await Order.findOne({ _id: orderId, userId: req.user.id });
+    const order = await Order.findOneAndUpdate(
+      { _id: orderId, userId: req.user.id, status: { $ne: "Cancelled" } },
+      { $set: { status: "Cancelled" } },
+      { returnDocument: "after" }
+    ).lean();
 
     if (!order) {
+      const existingOrder = await Order.findOne({ _id: orderId, userId: req.user.id }).lean();
+      if (existingOrder) {
+        return res.status(400).json({ message: "Order is already cancelled" });
+      }
       return res.status(404).json({ message: "Order not found" });
     }
-
-    if (order.status === "Cancelled") {
-      return res.status(400).json({ message: "Order is already cancelled" });
-    }
-
-    order.status = "Cancelled";
-    await order.save();
 
     return res.json({ message: "Order cancelled successfully", order });
   } catch (err) {
@@ -87,7 +89,7 @@ const updateOrderStatus = async (req, res) => {
       orderId,
       { $set: { status } },
       { returnDocument: "after", runValidators: true }
-    );
+    ).lean();
 
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
@@ -103,7 +105,7 @@ const updateOrderStatus = async (req, res) => {
 const deleteOrder = async (req, res) => {
   try {
     const { orderId } = req.params;
-    const order = await Order.findByIdAndDelete(orderId);
+    const order = await Order.findByIdAndDelete(orderId).lean();
 
     if (!order) {
       return res.status(404).json({ message: "Order not found" });

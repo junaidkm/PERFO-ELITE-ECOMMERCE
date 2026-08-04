@@ -1,5 +1,16 @@
 const Product = require("../models/Product");
 
+const parseSizes = (sizes) => {
+  if (typeof sizes === "string") {
+    try {
+      return JSON.parse(sizes);
+    } catch {
+      return null;
+    }
+  }
+  return sizes;
+};
+
 const getProducts = async (req, res) => {
   try {
     const { search, category, sort, page, limit } = req.query;
@@ -20,28 +31,33 @@ const getProducts = async (req, res) => {
     const sortQuery = sortMap[sort] || { createdAt: -1 };
 
     if (!page && !limit) {
-      const products = await Product.find(query).sort(sortQuery);
+      const products = await Product.find(query).sort(sortQuery).lean();
       return res.json(products);
     }
 
-    const pageNum = parseInt(page) || 1;
-    const limitNum = parseInt(limit) || 8;
+    const pageNum = parseInt(page, 10) || 1;
+    const limitNum = parseInt(limit, 10) || 8;
     const skip = (pageNum - 1) * limitNum;
 
     const [totalProducts, products, categories] = await Promise.all([
       Product.countDocuments(query),
-      Product.find(query).sort(sortQuery).skip(skip).limit(limitNum),
+      Product.find(query).sort(sortQuery).skip(skip).limit(limitNum).lean(),
       Product.distinct("category", { category: { $exists: true, $ne: null } })
     ]);
 
     const totalPages = Math.ceil(totalProducts / limitNum);
+
+    const categoryList = ["all"];
+    for (let i = 0; i < categories.length; i++) {
+      categoryList[i + 1] = categories[i];
+    }
 
     return res.json({
       products,
       totalPages,
       currentPage: pageNum,
       totalProducts,
-      categories: ["all", ...categories]
+      categories: categoryList
     });
   } catch (err) {
     console.error("Get products error:", err);
@@ -51,8 +67,7 @@ const getProducts = async (req, res) => {
 
 const getProductById = async (req, res) => {
   try {
-    const { id } = req.params;
-    const product = await Product.findById(id);
+    const product = await Product.findById(req.params.id).lean();
 
     if (!product) {
       return res.status(404).json({ message: "Product not found" });
@@ -70,17 +85,11 @@ const createProduct = async (req, res) => {
     const body = req.body || {};
     let { name, category, sizes, description, topNotes, baseNotes, importedBy, origin, manufacturer, img } = body;
 
-    if (typeof sizes === "string") {
-      try {
-        sizes = JSON.parse(sizes);
-      } catch (e) {
-        sizes = [];
-      }
-    }
+    sizes = parseSizes(sizes);
 
     const imagePath = req.file ? `/uploads/${req.file.filename}` : img;
 
-    if (!name || !category || !sizes || !Array.isArray(sizes) || sizes.length === 0) {
+    if (!name || !category || !sizes || typeof sizes !== "object" || typeof sizes.length !== "number" || sizes.length === 0) {
       return res.status(400).json({ message: "Name, category, and at least one size are required" });
     }
 
@@ -117,11 +126,12 @@ const updateProduct = async (req, res) => {
       updateData.img = `/uploads/${req.file.filename}`;
     }
 
-    if (typeof updateData.sizes === "string") {
-      try {
-        updateData.sizes = JSON.parse(updateData.sizes);
-      } catch (e) {
+    if (updateData.sizes !== undefined) {
+      const parsed = parseSizes(updateData.sizes);
+      if (parsed === null) {
         delete updateData.sizes;
+      } else {
+        updateData.sizes = parsed;
       }
     }
 
@@ -129,7 +139,7 @@ const updateProduct = async (req, res) => {
       id,
       { $set: updateData },
       { returnDocument: "after", runValidators: true }
-    );
+    ).lean();
 
     if (!product) {
       return res.status(404).json({ message: "Product not found" });
@@ -145,7 +155,7 @@ const updateProduct = async (req, res) => {
 const deleteProduct = async (req, res) => {
   try {
     const { id } = req.params;
-    const product = await Product.findByIdAndDelete(id);
+    const product = await Product.findByIdAndDelete(id).lean();
 
     if (!product) {
       return res.status(404).json({ message: "Product not found" });

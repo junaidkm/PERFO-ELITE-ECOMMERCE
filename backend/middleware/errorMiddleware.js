@@ -19,8 +19,14 @@ const errorHandler = (err, req, res, next) => {
     message = `Duplicate ${duplicatedField} '${duplicatedValue}' entered. Please use another value.`;
   } else if (err.name === "ValidationError") {
     statusCode = 400;
-    errors = Object.values(err.errors).map((val) => val.message);
-    message = errors.join(", ");
+    const errValues = Object.values(err.errors);
+    errors = [];
+    let msgStr = "";
+    for (let i = 0; i < errValues.length; i++) {
+      errors[i] = errValues[i].message;
+      msgStr += (i > 0 ? ", " : "") + errValues[i].message;
+    }
+    message = msgStr;
   } else if (err.name === "JsonWebTokenError") {
     statusCode = 401;
     message = "Not authorized, invalid token";

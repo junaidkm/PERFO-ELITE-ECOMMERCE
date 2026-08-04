@@ -1,16 +1,8 @@
 const Cart = require("../models/Cart");
 
-const getOrCreateCart = async (userId) => {
-  let cart = await Cart.findOne({ userId });
-  if (!cart) {
-    cart = await Cart.create({ userId, items: [] });
-  }
-  return cart;
-};
-
 const getCart = async (req, res) => {
   try {
-    const cart = await Cart.findOne({ userId: req.user.id }).populate("items.productId");
+    const cart = await Cart.findOne({ userId: req.user.id }).populate("items.productId").lean();
     return res.json(cart || { userId: req.user.id, items: [] });
   } catch (err) {
     console.error("Get cart error:", err);
@@ -27,19 +19,20 @@ const addToCart = async (req, res) => {
       return res.status(400).json({ message: "Product ID and size are required" });
     }
 
-    const cart = await getOrCreateCart(userId);
-    const existingItem = cart.items.find(
-      (item) => String(item.productId) === String(productId) && item.size === size
-    );
+    let cart = await Cart.findOneAndUpdate(
+      { userId, "items.productId": productId, "items.size": size },
+      { $inc: { "items.$.quantity": Number(quantity) } },
+      { returnDocument: "after", runValidators: true }
+    ).populate("items.productId").lean();
 
-    if (existingItem) {
-      existingItem.quantity += Number(quantity);
-    } else {
-      cart.items.push({ productId, size, quantity: Number(quantity) });
+    if (!cart) {
+      cart = await Cart.findOneAndUpdate(
+        { userId },
+        { $push: { items: { productId, size, quantity: Number(quantity) } } },
+        { returnDocument: "after", upsert: true, runValidators: true }
+      ).populate("items.productId").lean();
     }
 
-    await cart.save();
-    await cart.populate("items.productId");
     return res.status(200).json(cart);
   } catch (err) {
     console.error("Add to cart error:", err);
@@ -51,16 +44,25 @@ const updateCart = async (req, res) => {
   try {
     const userId = req.user.id;
     const { cart } = req.body;
-    
-    const cartDoc = await getOrCreateCart(userId);
-    cartDoc.items = cart.map((item) => ({
-      productId: item.productId || item.id,
-      size: item.size,
-      quantity: item.quantity
-    }));
 
-    await cartDoc.save();
-    await cartDoc.populate("items.productId");
+    const formattedItems = [];
+    if (cart && typeof cart === "object" && typeof cart.length === "number") {
+      for (let i = 0; i < cart.length; i++) {
+        const item = cart[i];
+        formattedItems[i] = {
+          productId: item.productId || item.id,
+          size: item.size,
+          quantity: item.quantity
+        };
+      }
+    }
+
+    const cartDoc = await Cart.findOneAndUpdate(
+      { userId },
+      { $set: { items: formattedItems } },
+      { returnDocument: "after", upsert: true, runValidators: true }
+    ).populate("items.productId").lean();
+
     return res.json(cartDoc);
   } catch (err) {
     console.error("Update cart error:", err);
@@ -73,12 +75,13 @@ const removeFromCart = async (req, res) => {
     const userId = req.user.id;
     const { itemId } = req.params;
 
-    const cartDoc = await getOrCreateCart(userId);
-    cartDoc.items.pull({ _id: itemId });
-    await cartDoc.save();
-    await cartDoc.populate("items.productId");
+    const cartDoc = await Cart.findOneAndUpdate(
+      { userId },
+      { $pull: { items: { _id: itemId } } },
+      { returnDocument: "after" }
+    ).populate("items.productId").lean();
 
-    return res.json(cartDoc);
+    return res.json(cartDoc || { userId, items: [] });
   } catch (err) {
     console.error("Remove from cart error:", err);
     return res.status(500).json({ message: "Failed to remove item from cart", error: err.message });
@@ -88,9 +91,11 @@ const removeFromCart = async (req, res) => {
 const clearCart = async (req, res) => {
   try {
     const userId = req.user.id;
-    const cartDoc = await getOrCreateCart(userId);
-    cartDoc.items = [];
-    await cartDoc.save();
+    await Cart.findOneAndUpdate(
+      { userId },
+      { $set: { items: [] } },
+      { returnDocument: "after" }
+    ).lean();
 
     return res.json({ message: "Cart cleared successfully", items: [] });
   } catch (err) {
