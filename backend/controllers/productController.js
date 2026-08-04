@@ -67,10 +67,25 @@ const getProductById = async (req, res) => {
 
 const createProduct = async (req, res) => {
   try {
-    const { name, category, sizes, description, topNotes, baseNotes, importedBy, origin, manufacturer, img } = req.body;
+    const body = req.body || {};
+    let { name, category, sizes, description, topNotes, baseNotes, importedBy, origin, manufacturer, img } = body;
+
+    if (typeof sizes === "string") {
+      try {
+        sizes = JSON.parse(sizes);
+      } catch (e) {
+        sizes = [];
+      }
+    }
+
+    const imagePath = req.file ? `/uploads/${req.file.filename}` : img;
 
     if (!name || !category || !sizes || !Array.isArray(sizes) || sizes.length === 0) {
       return res.status(400).json({ message: "Name, category, and at least one size are required" });
+    }
+
+    if (!imagePath) {
+      return res.status(400).json({ message: "Product image is required" });
     }
 
     const product = await Product.create({
@@ -83,7 +98,7 @@ const createProduct = async (req, res) => {
       importedBy,
       origin,
       manufacturer,
-      img
+      img: imagePath
     });
 
     return res.status(201).json(product);
@@ -96,10 +111,23 @@ const createProduct = async (req, res) => {
 const updateProduct = async (req, res) => {
   try {
     const { id } = req.params;
+    const updateData = { ...(req.body || {}) };
+
+    if (req.file) {
+      updateData.img = `/uploads/${req.file.filename}`;
+    }
+
+    if (typeof updateData.sizes === "string") {
+      try {
+        updateData.sizes = JSON.parse(updateData.sizes);
+      } catch (e) {
+        delete updateData.sizes;
+      }
+    }
 
     const product = await Product.findByIdAndUpdate(
       id,
-      { $set: req.body },
+      { $set: updateData },
       { returnDocument: "after", runValidators: true }
     );
 

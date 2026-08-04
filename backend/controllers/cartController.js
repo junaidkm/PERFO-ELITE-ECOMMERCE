@@ -51,11 +51,7 @@ const updateCart = async (req, res) => {
   try {
     const userId = req.user.id;
     const { cart } = req.body;
-
-    if (!Array.isArray(cart)) {
-      return res.status(400).json({ message: "Cart must be an array of items" });
-    }
-
+    
     const cartDoc = await getOrCreateCart(userId);
     cartDoc.items = cart.map((item) => ({
       productId: item.productId || item.id,

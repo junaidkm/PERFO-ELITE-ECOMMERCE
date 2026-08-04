@@ -33,7 +33,7 @@ function HomePage() {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentSlide(prev => (prev + 1) % BANNERS.length)
+      setCurrentSlide((prev) => (prev + 1) % BANNERS.length)
     }, 4000)
     return () => clearInterval(interval)
   }, [])
@@ -42,19 +42,25 @@ function HomePage() {
     const getProducts = async () => {
       try {
         const { data } = await api.get("/products")
-        setProducts(data)
+        const list = Array.isArray(data) ? data : data?.products || []
+        setProducts(list)
       } catch (err) {
-        console.error(err)
+        console.error("Fetch homepage products error:", err)
       }
     }
     getProducts()
   }, [])
 
   const filteredProducts = useMemo(() => {
+    if (!Array.isArray(products) || products.length === 0) return []
+
     if (activeCategory === "New") {
-      return [...products].slice(-6).reverse()
+      return products.slice(0, 8)
     }
-    return products.filter(p => p.category === activeCategory)
+
+    return products.filter(
+      (p) => p.category && p.category.toLowerCase() === activeCategory.toLowerCase()
+    )
   }, [products, activeCategory])
 
   return (
@@ -116,21 +122,21 @@ function HomePage() {
 
       {/* Main Content Area */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        
         {/* Category Filters */}
         <div className="flex flex-col items-center mb-12">
           <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-8 tracking-tight">
             Discover <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-500 to-yellow-700">Collections</span>
           </h2>
           <div className="flex flex-wrap justify-center gap-3 sm:gap-4 p-2 bg-gray-50/80 backdrop-blur-sm rounded-3xl border border-gray-100 shadow-sm">
-            {CATEGORIES.map(cat => (
+            {CATEGORIES.map((cat) => (
               <button
                 key={cat}
                 onClick={() => setActiveCategory(cat)}
                 className={`relative px-6 py-2.5 rounded-full text-sm sm:text-base font-semibold transition-all duration-300 ease-out overflow-hidden
-                  ${activeCategory === cat
-                    ? "text-white shadow-md transform scale-105"
-                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-200/50"
+                  ${
+                    activeCategory === cat
+                      ? "text-white shadow-md transform scale-105"
+                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-200/50"
                   }
                 `}
               >
@@ -151,7 +157,7 @@ function HomePage() {
             </h3>
             <p className="text-gray-500 mt-1">Showing {filteredProducts.length} premium products</p>
           </div>
-          <button 
+          <button
             onClick={() => navigate("/products")}
             className="hidden sm:flex items-center gap-1 text-sm font-semibold text-gray-600 hover:text-gray-900 transition-colors"
           >
@@ -166,7 +172,7 @@ function HomePage() {
               <Sparkles className="w-8 h-8 text-gray-400" />
             </div>
             <p className="text-lg text-gray-500 font-medium">No products found in this category</p>
-            <button 
+            <button
               onClick={() => setActiveCategory("New")}
               className="mt-4 text-yellow-600 font-semibold hover:text-yellow-700 transition-colors"
             >
@@ -175,27 +181,29 @@ function HomePage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 sm:gap-8">
-            {filteredProducts.map((item, index) => (
-              <div
-                key={item.id}
-                className="opacity-0 animate-[fadeInUp_0.5s_ease-out_forwards]"
-                style={{ animationDelay: `${index * 100}ms` }}
-              >
-                <ProductCard item={item} />
-              </div>
-            ))}
+            {filteredProducts.map((item, index) => {
+              const productId = item.id || item._id || index
+              return (
+                <div
+                  key={productId}
+                  className="opacity-0 animate-[fadeInUp_0.5s_ease-out_forwards]"
+                  style={{ animationDelay: `${index * 100}ms` }}
+                >
+                  <ProductCard item={item} />
+                </div>
+              )
+            })}
           </div>
         )}
 
         <div className="mt-12 sm:hidden flex justify-center">
-          <button 
+          <button
             onClick={() => navigate("/products")}
             className="flex items-center gap-2 px-6 py-3 border-2 border-gray-900 text-gray-900 font-bold rounded-full hover:bg-gray-900 hover:text-white transition-colors"
           >
             View All Products
           </button>
         </div>
-
       </div>
 
       <style>{`

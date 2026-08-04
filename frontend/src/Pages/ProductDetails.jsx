@@ -6,6 +6,7 @@ import { WishlistContext } from "../context/WishlistContext"
 import { toast } from "react-toastify"
 import { api } from "../services/api"
 import { ChevronLeft, ShoppingCart, Zap, Info, ShieldCheck, Truck, Heart, Sparkles } from "lucide-react"
+import { getImageUrl } from "../utils/imageUtils"
 
 import Layout from "../components/Layout"
 
@@ -147,7 +148,7 @@ function ProductDetails() {
                   </button>
 
                   <img
-                    src={product.img}
+                    src={getImageUrl(product.img)}
                     alt={product.name}
                     className="max-h-full object-contain drop-shadow-2xl transition-transform duration-700 ease-out group-hover:scale-105"
                   />

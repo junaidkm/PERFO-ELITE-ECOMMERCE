@@ -4,6 +4,7 @@ import { AuthContext } from "../context/AuthContext"
 import { useNavigate } from "react-router-dom"
 import Layout from "../components/Layout"
 import { Heart, ShoppingCart, Trash2, ArrowRight } from "lucide-react"
+import { getImageUrl } from "../utils/imageUtils"
 
 function WishlistPage() {
   const { wishlist, loading, removeFromWishlist, moveToCart, clearWishlist } = useContext(WishlistContext)
@@ -105,7 +106,7 @@ function WishlistPage() {
                       onClick={() => navigate(`/products/${targetId}`)}
                     >
                       <img
-                        src={item.img}
+                        src={getImageUrl(item.img)}
                         alt={item.name}
                         className="max-h-full object-contain drop-shadow-lg transition-transform duration-500 group-hover:scale-110"
                       />

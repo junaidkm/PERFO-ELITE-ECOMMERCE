@@ -21,10 +21,7 @@ const getAdminDashboardStats = async (req, res) => {
       { $group: { _id: "$sizes.stock", count: { $sum: 1 } } }
     ]);
 
-    const stockCounts = stockStats.reduce((acc, curr) => {
-      acc[curr._id] = curr.count;
-      return acc;
-    }, {});
+    const stockCounts = Object.fromEntries(stockStats.map(({ _id, count }) => [_id, count]));
 
     const recentOrders = await Order.find()
       .populate("userId", "name email")
@@ -49,10 +46,7 @@ const getAdminDashboardStats = async (req, res) => {
       }
     ]);
 
-    const salesMap = dailySalesAgg.reduce((acc, curr) => {
-      acc[curr._id] = curr.sales;
-      return acc;
-    }, {});
+    const salesMap = Object.fromEntries(dailySalesAgg.map(({ _id, sales }) => [_id, sales]));
 
     const salesData = Array.from({ length: 7 }, (_, i) => {
       const d = new Date();

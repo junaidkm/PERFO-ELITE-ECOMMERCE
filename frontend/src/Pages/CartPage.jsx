@@ -4,6 +4,7 @@ import { AuthContext } from "../context/AuthContext"
 import { useNavigate } from "react-router-dom"
 import Layout from "../components/Layout"
 import { ShoppingBag, Trash2, Minus, Plus, ArrowRight, Package, Sparkles } from "lucide-react"
+import { getImageUrl } from "../utils/imageUtils"
 
 function CartPage() {
   const { cart, loading, removeFromCart, updateQuantity, clearCart } = useContext(CartContext)
@@ -104,7 +105,7 @@ function CartPage() {
                         className="w-24 h-24 sm:w-28 sm:h-28 flex-shrink-0 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl flex items-center justify-center overflow-hidden cursor-pointer"
                       >
                         <img
-                          src={item.img}
+                          src={getImageUrl(item.img)}
                           alt={item.name}
                           className="w-full h-full object-contain p-2 transition-transform duration-300 group-hover:scale-105"
                         />

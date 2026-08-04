@@ -4,6 +4,7 @@ import { AuthContext } from "../context/AuthContext"
 import { CartContext } from "../context/CartContext"
 import { WishlistContext } from "../context/WishlistContext"
 import { ShoppingCart, Heart, Sparkles } from "lucide-react"
+import { getImageUrl } from "../utils/imageUtils"
 
 function ProductCard({ item }) {
   const navigate = useNavigate()
@@ -61,7 +62,7 @@ function ProductCard({ item }) {
       <div className="relative z-10 bg-gradient-to-tr from-gray-50 via-gray-50/80 to-amber-50/30 
       rounded-2xl p-6 h-56 sm:h-64 flex items-center justify-center overflow-hidden mb-4 mt-8">
         <img
-          src={item.img}
+          src={getImageUrl(item.img)}
           alt={item.name}
           className="max-h-full object-contain drop-shadow-xl 
           transition duration-700 ease-out group-hover:scale-110 group-hover:-rotate-2"

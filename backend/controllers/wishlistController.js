@@ -97,17 +97,20 @@ const updateWishlist = async (req, res) => {
 const removeFromWishlist = async (req, res) => {
   try {
     const { productId } = req.params;
+
     const wishlistDoc = await getOrCreateWishlist(req.user.id);
 
-    wishlistDoc.items = wishlistDoc.items.filter(
-      (item) => String(item.productId) !== String(productId) && String(item._id) !== String(productId)
-    );
+    wishlistDoc.items.pull({ _id: productId });
 
     await wishlistDoc.save();
+
     return res.json(wishlistDoc.items);
   } catch (err) {
     console.error("Remove from wishlist error:", err);
-    return res.status(500).json({ message: "Failed to remove item from wishlist", error: err.message });
+    return res.status(500).json({
+      message: "Failed to remove item from wishlist",
+      error: err.message
+    });
   }
 };
 

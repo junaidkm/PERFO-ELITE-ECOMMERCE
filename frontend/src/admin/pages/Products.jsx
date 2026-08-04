@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react"
 import { api } from "../../services/api"
-import { Package, Search, Plus, Edit2, Trash2, X, UploadCloud, Tag, CheckCircle2 } from "lucide-react"
+import { getImageUrl } from "../../utils/imageUtils"
+import { Package, Search, Plus, Edit2, Trash2, X, UploadCloud, Tag, CheckCircle2, Image as ImageIcon } from "lucide-react"
 import { toast } from "react-toastify"
 
 function Products() {
@@ -9,6 +10,9 @@ function Products() {
   const [editing, setEditing] = useState(null)
   const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState("")
+
+  const [imageFile, setImageFile] = useState(null)
+  const [imagePreview, setImagePreview] = useState("")
 
   const [form, setForm] = useState({
     name: "",
@@ -41,17 +45,41 @@ function Products() {
     fetchProducts()
   }, [])
 
+  const handleImageChange = (e) => {
+    const file = e.target.files[0]
+    if (file) {
+      setImageFile(file)
+      setImagePreview(URL.createObjectURL(file))
+    }
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     try {
       const targetId = editing ? (editing.id || editing._id) : null
+
+      const formData = new FormData()
+      formData.append("name", form.name)
+      formData.append("category", form.category)
+      formData.append("description", form.description)
+      formData.append("topNotes", form.topNotes || "")
+      formData.append("baseNotes", form.baseNotes || "")
+      formData.append("sizes", JSON.stringify(form.sizes))
+
+      if (imageFile) {
+        formData.append("image", imageFile)
+      } else if (form.img) {
+        formData.append("img", form.img)
+      }
+
       if (editing && targetId) {
-        await api.put(`/products/${targetId}`, form)
+        await api.put(`/products/${targetId}`, formData)
         toast.success("Product updated successfully ✨")
       } else {
-        await api.post("/products", form)
+        await api.post("/products", formData)
         toast.success("Product created successfully 🚀")
       }
+
       resetForm()
       fetchProducts()
       setView("list")
@@ -74,6 +102,8 @@ function Products() {
         { size: "100ml", price: "", stock: "In Stock" }
       ]
     })
+    setImageFile(null)
+    setImagePreview(p.img || "")
     setEditing(p)
     setView("form")
   }
@@ -124,6 +154,8 @@ function Products() {
         { size: "100ml", price: "", stock: "In Stock" }
       ]
     })
+    setImageFile(null)
+    setImagePreview("")
     setEditing(null)
   }
 
@@ -258,34 +290,41 @@ function Products() {
 
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Image URL</label>
+                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Upload Product Image</label>
                 <div className="relative">
-                  <UploadCloud className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                   <input
-                    placeholder="https://images.unsplash.com/..."
-                    className={`${inputClass} pl-10`}
-                    value={form.img}
-                    onChange={(e) => setForm({ ...form, img: e.target.value })}
-                    required
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageChange}
+                    id="product-image-upload"
+                    className="hidden"
+                    required={!editing && !imagePreview}
                   />
+                  <label
+                    htmlFor="product-image-upload"
+                    className="flex items-center justify-center gap-3 w-full px-4 py-3 bg-gray-900 border border-dashed border-amber-400/40 hover:border-amber-400 rounded-xl text-amber-400 cursor-pointer font-bold text-sm transition-all"
+                  >
+                    <UploadCloud className="w-5 h-5" />
+                    {imageFile ? imageFile.name : "Choose Image File"}
+                  </label>
                 </div>
               </div>
 
-              {form.img ? (
+              {imagePreview ? (
                 <div className="w-full h-56 bg-gray-950 border border-white/10 rounded-2xl flex items-center justify-center p-4 overflow-hidden relative">
                   <img
-                    src={form.img}
+                    src={imagePreview}
                     alt="Preview"
                     className="max-h-full object-contain drop-shadow-xl"
                     onError={(e) => {
-                      e.target.src = "https://via.placeholder.com/300?text=Invalid+Image+URL"
+                      e.target.src = "https://via.placeholder.com/300?text=Image+Load+Error"
                     }}
                   />
                 </div>
               ) : (
                 <div className="w-full h-56 bg-gray-950 border border-dashed border-white/10 rounded-2xl flex flex-col items-center justify-center p-4 text-gray-500">
-                  <UploadCloud className="w-8 h-8 mb-2 text-gray-600" />
-                  <span className="text-xs">Image Preview Will Appear Here</span>
+                  <ImageIcon className="w-8 h-8 mb-2 text-gray-600" />
+                  <span className="text-xs">Selected Image Preview</span>
                 </div>
               )}
             </div>
@@ -425,7 +464,7 @@ function Products() {
                   <div className="h-52 bg-gray-950 flex items-center justify-center relative overflow-hidden p-4">
                     <div className="absolute inset-0 bg-gradient-to-t from-gray-950 via-transparent to-transparent opacity-60"></div>
                     <img
-                      src={p.img}
+                      src={getImageUrl(p.img)}
                       className="max-h-full object-contain relative z-10 transition-transform duration-500 group-hover:scale-110 drop-shadow-2xl"
                       alt={p.name}
                       onError={(e) => {
