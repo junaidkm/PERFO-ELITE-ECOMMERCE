@@ -5,12 +5,15 @@ export const api = axios.create({
   withCredentials: true, // Send httpOnly cookie automatically (same-origin)
 });
 
-// Attach stored token as Bearer header for cross-origin requests
+// In-memory token — set by AuthContext on login/logout (no extra cookie needed)
+let _token = null;
+export const setAuthToken = (token) => { _token = token; };
+export const clearAuthToken = () => { _token = null; };
+
+// Attach Bearer token for cross-origin requests
 api.interceptors.request.use((config) => {
-  const match = document.cookie.match(/(?:^|; )token=([^;]*)/);
-  const token = match ? decodeURIComponent(match[1]) : null;
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+  if (_token) {
+    config.headers.Authorization = `Bearer ${_token}`;
   }
   return config;
 });

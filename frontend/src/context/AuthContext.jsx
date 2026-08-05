@@ -1,5 +1,5 @@
 import { createContext, useState, useEffect, useCallback, useMemo } from "react"
-import { api } from "../services/api"
+import { api, setAuthToken, clearAuthToken } from "../services/api"
 
 export const AuthContext = createContext()
 
@@ -33,7 +33,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = useCallback((id, token) => {
     setCookie("userId", id, 30)
-    if (token) setCookie("token", token, 30)
+    if (token) setAuthToken(token)
     setUserId(id)
   }, [])
 
@@ -46,7 +46,7 @@ export const AuthProvider = ({ children }) => {
       console.error("Logout error:", err)
     } finally {
       removeCookie("userId")
-      removeCookie("token")
+      clearAuthToken()
       setUserId(null)
       setUser(null)
     }
