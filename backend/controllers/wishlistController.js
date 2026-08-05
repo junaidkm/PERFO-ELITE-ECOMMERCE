@@ -119,7 +119,7 @@ const clearWishlist = async (req, res) => {
       { returnDocument: "after" }
     ).lean();
 
-    return res.json({ message: "Wishlist cleared successfully", items: [] });
+    return res.json({ message: "Wishlist cleared successfullyY", items: [] });
   } catch (err) {
     console.error("Clear wishlist error:", err);
     return res.status(500).json({ message: "Failed to clear wishlist", error: err.message });
