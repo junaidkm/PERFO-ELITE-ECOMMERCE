@@ -26,7 +26,7 @@ function Registration() {
     try {
       const { data } = await api.post("/auth/register", { name, email, password })
       toast.success("Account created successfully!")
-      login(data.user.id)
+      login(data.user.id, data.token)
       setTimeout(() => { navigate("/") }, 1000)
     } catch (error) {
       console.error(error)
