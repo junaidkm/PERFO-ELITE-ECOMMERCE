@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from "react"
+import React, { useContext, useEffect, useState, useCallback, useMemo } from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import { AuthContext } from "../context/AuthContext"
 import { CartContext } from "../context/CartContext"
@@ -7,7 +7,6 @@ import { toast } from "react-toastify"
 import { api } from "../services/api"
 import { ChevronLeft, ShoppingCart, Zap, Info, ShieldCheck, Truck, Heart, Sparkles } from "lucide-react"
 import { getImageUrl } from "../utils/imageUtils"
-
 import Layout from "../components/Layout"
 
 function ProductDetails() {
@@ -22,26 +21,54 @@ function ProductDetails() {
   const [selectedSize, setSelectedSize] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  const isWishlisted = wishlist.some(
-    (w) => String(w.productId) === String(product?.id || product?._id)
+  const isWishlisted = useMemo(
+    () => wishlist.some((w) => String(w.productId || w.id || w._id) === String(product?.id || product?._id)),
+    [wishlist, product]
   )
 
   useEffect(() => {
+    let isMounted = true
     const fetchProduct = async () => {
       try {
+        setLoading(true)
         const { data } = await api.get(`/products/${id}`)
-        setProduct(data)
-        setSelectedSize(data.sizes?.[0] || null)
+        if (isMounted) {
+          setProduct(data)
+          setSelectedSize(data.sizes?.[0] || null)
+        }
       } catch (err) {
         console.error("Error fetching product:", err)
         toast.error("Failed to load product details")
       } finally {
-        setLoading(false)
+        if (isMounted) setLoading(false)
       }
     }
 
     fetchProduct()
+
+    return () => {
+      isMounted = false
+    }
   }, [id])
+
+  const handleBuyNow = useCallback(() => {
+    if (!userId) return toast.warning("Login first")
+    if (!selectedSize) return toast.warning("Select size")
+    if (selectedSize.stock !== "In Stock") return toast.error("Out of stock")
+
+    navigate("/payment", {
+      state: {
+        buyNowItem: {
+          id: product.id || product._id,
+          name: product.name,
+          img: product.img,
+          price: selectedSize?.price,
+          selectedSize,
+          quantity: 1
+        }
+      }
+    })
+  }, [userId, selectedSize, product, navigate])
 
   if (loading) {
     return (
@@ -72,25 +99,6 @@ function ProductDetails() {
         </div>
       </div>
     )
-  }
-
-  const handleBuyNow = () => {
-    if (!userId) return toast.warning("Login first")
-    if (!selectedSize) return toast.warning("Select size")
-    if (selectedSize.stock !== "In Stock") return toast.error("Out of stock")
-
-    navigate("/payment", {
-      state: {
-        buyNowItem: {
-          id: product.id || product._id,
-          name: product.name,
-          img: product.img,
-          price: selectedSize?.price,
-          selectedSize,
-          quantity: 1
-        }
-      }
-    })
   }
 
   return (

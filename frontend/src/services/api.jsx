@@ -1,8 +1,8 @@
 import axios from "axios";
 
 export const api = axios.create({
-  baseURL: "http://localhost:3000/api",
-  withCredentials: true, // Send the httpOnly cookie on every request automatically
+  baseURL: import.meta.env.VITE_API_URL || "http://localhost:3000/api",
+  withCredentials: true, // Send httpOnly cookie automatically
 });
 
 api.interceptors.response.use(
@@ -11,7 +11,6 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       console.log("Unauthorized - redirect to login");
     }
-
     return Promise.reject(error);
   }
 );

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react"
+import React, { useEffect, useState, useMemo, useCallback } from "react"
 import Layout from "../components/Layout"
 import ProductCard from "../components/ProductCard"
 import { api } from "../services/api"
@@ -32,6 +32,7 @@ function Products() {
 
   // Fetch paginated, sorted, and filtered products from the backend
   useEffect(() => {
+    let isMounted = true
     const fetchProducts = async () => {
       try {
         setLoading(true)
@@ -44,34 +45,40 @@ function Products() {
             limit: 8
           }
         })
-        setProducts(res.data.products || [])
-        setTotalPages(res.data.totalPages || 1)
-        setTotalProducts(res.data.totalProducts || 0)
-        if (res.data.categories) {
-          setCategories(res.data.categories)
+        if (isMounted) {
+          setProducts(res.data.products || [])
+          setTotalPages(res.data.totalPages || 1)
+          setTotalProducts(res.data.totalProducts || 0)
+          if (res.data.categories) {
+            setCategories(res.data.categories)
+          }
         }
       } catch (err) {
         console.error("Error fetching products:", err)
       } finally {
-        setLoading(false)
+        if (isMounted) setLoading(false)
       }
     }
 
     fetchProducts()
+
+    return () => {
+      isMounted = false
+    }
   }, [search, category, sort, page])
 
-  const clearFilters = () => {
+  const clearFilters = useCallback(() => {
     setInputSearch("")
     setSearch("")
     setCategory("all")
     setSort("default")
     setPage(1)
-  }
+  }, [])
 
   const isFiltered = inputSearch !== "" || category !== "all" || sort !== "default"
 
   // Compute pagination number array dynamically with ellipse (...) spacer
-  const getPageNumbers = () => {
+  const pageNumbers = useMemo(() => {
     const pages = []
     const range = 2
     for (let i = 1; i <= totalPages; i++) {
@@ -86,7 +93,7 @@ function Products() {
       }
     }
     return pages
-  }
+  }, [totalPages, page])
 
   return (
     <div className="min-h-screen bg-[#fafafa]">
@@ -237,7 +244,7 @@ function Products() {
                       </button>
 
                       <div className="flex items-center gap-1.5">
-                        {getPageNumbers().map((p, idx) =>
+                        {pageNumbers.map((p, idx) =>
                           p === "..." ? (
                             <span key={`dots-${idx}`} className="w-10 text-center text-gray-400 font-bold">
                               ...
@@ -279,4 +286,4 @@ function Products() {
   )
 }
 
-export default Products;
+export default Products

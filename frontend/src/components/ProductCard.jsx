@@ -1,4 +1,4 @@
-import React, { useContext } from "react"
+import React, { useContext, memo } from "react"
 import { useNavigate } from "react-router-dom"
 import { AuthContext } from "../context/AuthContext"
 import { CartContext } from "../context/CartContext"
@@ -14,7 +14,7 @@ function ProductCard({ item }) {
   const { wishlist, toggleWishlist } = useContext(WishlistContext)
 
   const isWishlisted = wishlist.some(
-    (w) => String(w.productId) === String(item.id || item._id)
+    (w) => String(w.productId || w.id || w._id) === String(item.id || item._id)
   )
 
   const defaultSize = item.sizes?.[0]
@@ -64,6 +64,7 @@ function ProductCard({ item }) {
         <img
           src={getImageUrl(item.img)}
           alt={item.name}
+          loading="lazy"
           className="max-h-full object-contain drop-shadow-xl 
           transition duration-700 ease-out group-hover:scale-110 group-hover:-rotate-2"
         />
@@ -148,4 +149,4 @@ function ProductCard({ item }) {
   )
 }
 
-export default ProductCard
+export default memo(ProductCard)

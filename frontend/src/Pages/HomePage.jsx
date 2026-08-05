@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react"
+import React, { useEffect, useState, useMemo, useCallback } from "react"
 import { api } from "../services/api"
 import { useNavigate } from "react-router-dom"
 import Layout from "../components/Layout"
@@ -39,16 +39,20 @@ function HomePage() {
   }, [])
 
   useEffect(() => {
+    let isMounted = true
     const getProducts = async () => {
       try {
         const { data } = await api.get("/products")
         const list = Array.isArray(data) ? data : data?.products || []
-        setProducts(list)
+        if (isMounted) setProducts(list)
       } catch (err) {
         console.error("Fetch homepage products error:", err)
       }
     }
     getProducts()
+    return () => {
+      isMounted = false
+    }
   }, [])
 
   const filteredProducts = useMemo(() => {
@@ -62,6 +66,10 @@ function HomePage() {
       (p) => p.category && p.category.toLowerCase() === activeCategory.toLowerCase()
     )
   }, [products, activeCategory])
+
+  const handleExplore = useCallback(() => {
+    navigate("/products")
+  }, [navigate])
 
   return (
     <Layout>
@@ -77,6 +85,7 @@ function HomePage() {
             <img
               src={banner.image}
               alt={banner.title}
+              loading={index === 0 ? "eager" : "lazy"}
               className="w-full h-full object-cover transform scale-105 transition-transform duration-[10000ms] ease-linear"
               style={{ transform: index === currentSlide ? "scale(1.1)" : "scale(1)" }}
             />
@@ -96,7 +105,7 @@ function HomePage() {
             {BANNERS[currentSlide]?.subtitle}
           </p>
           <button
-            onClick={() => navigate("/products")}
+            onClick={handleExplore}
             className="mt-8 group relative inline-flex items-center justify-center gap-3 px-8 py-4 bg-white text-gray-900 font-bold rounded-full overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-[0_0_40px_rgba(255,255,255,0.3)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900"
           >
             <span className="absolute inset-0 bg-yellow-400 transition-transform duration-300 origin-left transform scale-x-0 group-hover:scale-x-100"></span>
@@ -158,7 +167,7 @@ function HomePage() {
             <p className="text-gray-500 mt-1">Showing {filteredProducts.length} premium products</p>
           </div>
           <button
-            onClick={() => navigate("/products")}
+            onClick={handleExplore}
             className="hidden sm:flex items-center gap-1 text-sm font-semibold text-gray-600 hover:text-gray-900 transition-colors"
           >
             View All <ChevronRight className="w-4 h-4" />
@@ -187,7 +196,7 @@ function HomePage() {
                 <div
                   key={productId}
                   className="opacity-0 animate-[fadeInUp_0.5s_ease-out_forwards]"
-                  style={{ animationDelay: `${index * 100}ms` }}
+                  style={{ animationDelay: `${index * 80}ms` }}
                 >
                   <ProductCard item={item} />
                 </div>
@@ -198,7 +207,7 @@ function HomePage() {
 
         <div className="mt-12 sm:hidden flex justify-center">
           <button
-            onClick={() => navigate("/products")}
+            onClick={handleExplore}
             className="flex items-center gap-2 px-6 py-3 border-2 border-gray-900 text-gray-900 font-bold rounded-full hover:bg-gray-900 hover:text-white transition-colors"
           >
             View All Products

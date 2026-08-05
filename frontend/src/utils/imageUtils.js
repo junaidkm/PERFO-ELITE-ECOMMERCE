@@ -3,6 +3,7 @@ export const getImageUrl = (url) => {
   if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("blob:") || url.startsWith("data:")) {
     return url;
   }
+  const serverUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:3000";
   const cleanPath = url.startsWith("/") ? url : `/${url}`;
-  return `http://localhost:3000${cleanPath}`;
+  return `${serverUrl}${cleanPath}`;
 };

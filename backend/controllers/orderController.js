@@ -3,7 +3,8 @@ const asyncHandler = require("../middleware/asyncHandler");
 
 const getOrders = asyncHandler(async (req, res) => {
   const orders = await Order.find({ userId: req.user.id }).sort({ createdAt: -1 }).lean();
-  return res.json(orders);
+  const formattedOrders = orders.map(o => ({ ...o, id: o._id.toString() }));
+  return res.json(formattedOrders);
 });
 
 const getAllAdminOrders = asyncHandler(async (req, res) => {
@@ -11,7 +12,8 @@ const getAllAdminOrders = asyncHandler(async (req, res) => {
     .populate("userId", "name email")
     .sort({ createdAt: -1 })
     .lean();
-  return res.json(orders);
+  const formattedOrders = orders.map(o => ({ ...o, id: o._id.toString() }));
+  return res.json(formattedOrders);
 });
 
 const createOrder = asyncHandler(async (req, res) => {
@@ -35,7 +37,10 @@ const createOrder = asyncHandler(async (req, res) => {
     paymentMethod
   });
 
-  return res.status(201).json(newOrder);
+  const responseObj = newOrder.toObject();
+  responseObj.id = responseObj._id.toString();
+
+  return res.status(201).json(responseObj);
 });
 
 const cancelOrder = asyncHandler(async (req, res) => {
@@ -54,6 +59,7 @@ const cancelOrder = asyncHandler(async (req, res) => {
     return res.status(404).json({ message: "Order not found" });
   }
 
+  order.id = order._id.toString();
   return res.json({ message: "Order cancelled successfully", order });
 });
 
@@ -75,6 +81,7 @@ const updateOrderStatus = asyncHandler(async (req, res) => {
     return res.status(404).json({ message: "Order not found" });
   }
 
+  order.id = order._id.toString();
   return res.json(order);
 });
 

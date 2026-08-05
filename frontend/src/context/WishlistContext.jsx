@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect } from "react"
+import React, { createContext, useState, useContext, useEffect, useCallback, useMemo } from "react"
 import { AuthContext } from "./AuthContext"
 import { CartContext } from "./CartContext"
 import { getWishlist, updateWishlist, removeWishlistItem, clearUserWishlist } from "../services/wishlistService"
@@ -13,7 +13,7 @@ export const WishlistProvider = ({ children }) => {
   const [wishlist, setWishlist] = useState([])
   const [loading, setLoading] = useState(false)
 
-  const fetchWishlist = async () => {
+  const fetchWishlist = useCallback(async () => {
     if (!userId) {
       setWishlist([])
       return
@@ -25,13 +25,13 @@ export const WishlistProvider = ({ children }) => {
       const items = Array.isArray(data) ? data : data?.items || data?.wishlist || []
       setWishlist(items)
     } catch (err) {
-      console.log("Failed to fetch wishlist:", err)
+      console.error("Failed to fetch wishlist:", err)
     } finally {
       setLoading(false)
     }
-  }
+  }, [userId])
 
-  const toggleWishlist = async (product) => {
+  const toggleWishlist = useCallback(async (product) => {
     if (!userId) {
       toast.warning("Please login first ⚠️")
       return
@@ -68,12 +68,12 @@ export const WishlistProvider = ({ children }) => {
     try {
       await updateWishlist(userId, updatedWishlist)
     } catch (err) {
-      console.log(err)
+      console.error("Error updating wishlist:", err)
       toast.error("Error updating wishlist ❌")
     }
-  }
+  }, [userId, wishlist])
 
-  const removeFromWishlist = async (productId) => {
+  const removeFromWishlist = useCallback(async (productId) => {
     try {
       const updatedWishlist = wishlist.filter(
         (item) => String(item.productId || item.id || item._id) !== String(productId)
@@ -83,12 +83,12 @@ export const WishlistProvider = ({ children }) => {
       await removeWishlistItem(productId)
       toast.info("Removed from wishlist")
     } catch (err) {
-      console.log(err)
+      console.error("Error removing item:", err)
       toast.error("Error removing item")
     }
-  }
+  }, [wishlist])
 
-  const moveToCart = async (item) => {
+  const moveToCart = useCallback(async (item) => {
     try {
       await addToCart({
         product: { id: item.productId || item.id, name: item.name, img: item.img },
@@ -103,12 +103,12 @@ export const WishlistProvider = ({ children }) => {
       setWishlist(updatedWishlist)
       await updateWishlist(userId, updatedWishlist)
     } catch (err) {
-      console.log(err)
+      console.error("Error moving item to cart:", err)
       toast.error("Error moving item to cart ❌")
     }
-  }
+  }, [userId, wishlist, addToCart])
 
-  const clearWishlist = async () => {
+  const clearWishlist = useCallback(async () => {
     if (!userId) return
     try {
       setLoading(true)
@@ -116,30 +116,29 @@ export const WishlistProvider = ({ children }) => {
       await clearUserWishlist()
       toast.info("Wishlist cleared")
     } catch (err) {
-      console.log("Error clearing wishlist:", err)
+      console.error("Error clearing wishlist:", err)
     } finally {
       setLoading(false)
     }
-  }
+  }, [userId])
 
   useEffect(() => {
     fetchWishlist()
-  }, [userId])
+  }, [userId, fetchWishlist])
 
-  return (
-    <WishlistContext.Provider
-      value={{
-        wishlist,
-        loading,
-        setWishlist,
-        toggleWishlist,
-        removeFromWishlist,
-        moveToCart,
-        clearWishlist,
-        fetchWishlist
-      }}
-    >
-      {children}
-    </WishlistContext.Provider>
+  const value = useMemo(
+    () => ({
+      wishlist,
+      loading,
+      setWishlist,
+      toggleWishlist,
+      removeFromWishlist,
+      moveToCart,
+      clearWishlist,
+      fetchWishlist
+    }),
+    [wishlist, loading, toggleWishlist, removeFromWishlist, moveToCart, clearWishlist, fetchWishlist]
   )
+
+  return <WishlistContext.Provider value={value}>{children}</WishlistContext.Provider>
 }

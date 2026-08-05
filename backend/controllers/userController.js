@@ -9,12 +9,14 @@ const getUserProfile = asyncHandler(async (req, res) => {
     return res.status(404).json({ message: "User not found" });
   }
 
+  user.id = user._id.toString();
   return res.json(user);
 });
 
 const getAllUsers = asyncHandler(async (req, res) => {
   const users = await User.find().select("-password").sort({ createdAt: -1 }).lean();
-  return res.json(users);
+  const formattedUsers = users.map(u => ({ ...u, id: u._id.toString() }));
+  return res.json(formattedUsers);
 });
 
 const updateUser = asyncHandler(async (req, res) => {
@@ -32,6 +34,7 @@ const updateUser = asyncHandler(async (req, res) => {
     return res.status(404).json({ message: "User not found" });
   }
 
+  user.id = user._id.toString();
   return res.json(user);
 });
 

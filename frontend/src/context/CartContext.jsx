@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react"
+import { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react"
 import { AuthContext } from "./AuthContext"
 import { getCart, updateCart, clearUserCart, addItemToCart, removeItemFromCart } from "../services/cartService"
 import { toast } from "react-toastify"
@@ -32,28 +32,26 @@ export const CartProvider = ({ children }) => {
   const [cart, setCart] = useState([])
   const [loading, setLoading] = useState(false)
 
-  const fetchCart = async () => {
+  const fetchCart = useCallback(async () => {
     if (!userId) return
 
     try {
       setLoading(true)
-
       const { data } = await getCart(userId)
-
       const itemsList = Array.isArray(data)
         ? data
         : data?.items || data?.cart || []
 
       setCart(mapCartItems(itemsList))
     } catch (err) {
-      console.log("Failed to load cart:", err)
+      console.error("Failed to load cart:", err)
       toast.error("Failed to load cart")
     } finally {
       setLoading(false)
     }
-  }
+  }, [userId])
 
-  const addToCart = async ({ product, selectedSize }) => {
+  const addToCart = useCallback(async ({ product, selectedSize }) => {
     if (!userId) return toast.warning("Login first ⚠️")
     if (!selectedSize) return toast.warning("Select size")
     if (selectedSize.stock !== "In Stock") return toast.error("Out of stock")
@@ -75,14 +73,14 @@ export const CartProvider = ({ children }) => {
       setCart(mapCartItems(itemsList))
       toast.success("Added to cart 🛒")
     } catch (err) {
-      console.log(err)
+      console.error("Error adding to cart:", err)
       toast.error("Error adding to cart ❌")
     } finally {
       setLoading(false)
     }
-  }
+  }, [userId])
 
-  const removeFromCart = async (id) => {
+  const removeFromCart = useCallback(async (id) => {
     if (!userId) return
     try {
       setLoading(true)
@@ -95,14 +93,14 @@ export const CartProvider = ({ children }) => {
       setCart(mapCartItems(itemsList))
       toast.info("Item removed 🗑️")
     } catch (err) {
-      console.log(err)
+      console.error("Error removing item:", err)
       toast.error("Error removing item")
     } finally {
       setLoading(false)
     }
-  }
+  }, [userId])
 
-  const updateQuantity = async (id, type) => {
+  const updateQuantity = useCallback(async (id, type) => {
     if (!userId) return
 
     try {
@@ -131,12 +129,12 @@ export const CartProvider = ({ children }) => {
 
       setCart(mapCartItems(itemsList))
     } catch (err) {
-      console.log(err)
+      console.error("Failed to update quantity:", err)
       toast.error("Failed to update quantity")
     }
-  }
+  }, [userId, cart])
 
-  const clearCart = async () => {
+  const clearCart = useCallback(async () => {
     if (!userId) return
     try {
       setLoading(true)
@@ -144,11 +142,11 @@ export const CartProvider = ({ children }) => {
       await clearUserCart()
       toast.info("Cart cleared")
     } catch (err) {
-      console.log("Failed to clear cart:", err)
+      console.error("Failed to clear cart:", err)
     } finally {
       setLoading(false)
     }
-  }
+  }, [userId])
 
   useEffect(() => {
     if (!userId) {
@@ -156,21 +154,20 @@ export const CartProvider = ({ children }) => {
     } else {
       fetchCart()
     }
-  }, [userId])
+  }, [userId, fetchCart])
 
-  return (
-    <CartContext.Provider
-      value={{
-        cart,
-        loading,
-        addToCart,
-        removeFromCart,
-        updateQuantity,
-        clearCart,
-        fetchCart
-      }}
-    >
-      {children}
-    </CartContext.Provider>
+  const value = useMemo(
+    () => ({
+      cart,
+      loading,
+      addToCart,
+      removeFromCart,
+      updateQuantity,
+      clearCart,
+      fetchCart
+    }),
+    [cart, loading, addToCart, removeFromCart, updateQuantity, clearCart, fetchCart]
   )
+
+  return <CartContext.Provider value={value}>{children}</CartContext.Provider>
 }
