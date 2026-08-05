@@ -33,7 +33,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = useCallback((id, token) => {
     setCookie("userId", id, 30)
-    if (token) localStorage.setItem("token", token)
+    if (token) setCookie("token", token, 30)
     setUserId(id)
   }, [])
 
@@ -46,7 +46,7 @@ export const AuthProvider = ({ children }) => {
       console.error("Logout error:", err)
     } finally {
       removeCookie("userId")
-      localStorage.removeItem("token")
+      removeCookie("token")
       setUserId(null)
       setUser(null)
     }

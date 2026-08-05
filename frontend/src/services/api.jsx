@@ -7,7 +7,8 @@ export const api = axios.create({
 
 // Attach stored token as Bearer header for cross-origin requests
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
+  const match = document.cookie.match(/(?:^|; )token=([^;]*)/);
+  const token = match ? decodeURIComponent(match[1]) : null;
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
