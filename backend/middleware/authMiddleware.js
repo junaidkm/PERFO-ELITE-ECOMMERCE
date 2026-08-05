@@ -12,16 +12,18 @@ const protect = async (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = await User.findById(decoded.id).select("-password");
+    const user = await User.findById(decoded.id).select("-password").lean();
 
-    if (!req.user) {
+    if (!user) {
       return res.status(401).json({ message: "Not authorized, user not found" });
     }
 
-    if (req.user.blocked) {
+    if (user.blocked) {
       return res.status(403).json({ message: "Your account has been blocked" });
     }
 
+    req.user = user;
+    req.user.id = user._id.toString();
     return next();
   } catch (err) {
     console.error("JWT verification error:", err.message);

@@ -1,130 +1,96 @@
 const Wishlist = require("../models/Wishlist");
+const asyncHandler = require("../middleware/asyncHandler");
 
-const getWishlist = async (req, res) => {
-  try {
-    const wishlistDoc = await Wishlist.findOne({ userId: req.user.id }).lean();
-    return res.json(wishlistDoc ? wishlistDoc.items : []);
-  } catch (err) {
-    console.error("Get wishlist error:", err);
-    return res.status(500).json({ message: "Failed to fetch wishlist", error: err.message });
+const getWishlist = asyncHandler(async (req, res) => {
+  const wishlistDoc = await Wishlist.findOne({ userId: req.user.id }).lean();
+  return res.json(wishlistDoc ? wishlistDoc.items : []);
+});
+
+const addToWishlist = asyncHandler(async (req, res) => {
+  const { productId, name, img, price } = req.body;
+
+  if (!productId) {
+    return res.status(400).json({ message: "Product ID is required" });
   }
-};
 
-const addToWishlist = async (req, res) => {
-  try {
-    const { productId, name, img, price } = req.body;
+  const wishlistDoc = await Wishlist.findOneAndUpdate(
+    { userId: req.user.id, "items.productId": { $ne: productId } },
+    { $push: { items: { productId, name, img, price } } },
+    { returnDocument: "after", upsert: true }
+  ).lean();
 
-    if (!productId) {
-      return res.status(400).json({ message: "Product ID is required" });
-    }
+  const finalWishlist = wishlistDoc || (await Wishlist.findOne({ userId: req.user.id }).lean());
+  return res.json(finalWishlist ? finalWishlist.items : []);
+});
 
-    const wishlistDoc = await Wishlist.findOneAndUpdate(
-      { userId: req.user.id, "items.productId": { $ne: productId } },
+const toggleWishlist = asyncHandler(async (req, res) => {
+  const { productId, name, img, price } = req.body;
+
+  if (!productId) {
+    return res.status(400).json({ message: "Product ID is required" });
+  }
+
+  let wishlistDoc = await Wishlist.findOneAndUpdate(
+    { userId: req.user.id, "items.productId": productId },
+    { $pull: { items: { productId } } },
+    { returnDocument: "after" }
+  ).lean();
+
+  let isAdded = false;
+
+  if (!wishlistDoc) {
+    wishlistDoc = await Wishlist.findOneAndUpdate(
+      { userId: req.user.id },
       { $push: { items: { productId, name, img, price } } },
       { returnDocument: "after", upsert: true }
     ).lean();
-
-    const finalWishlist = wishlistDoc || (await Wishlist.findOne({ userId: req.user.id }).lean());
-    return res.json(finalWishlist ? finalWishlist.items : []);
-  } catch (err) {
-    console.error("Add to wishlist error:", err);
-    return res.status(500).json({ message: "Failed to add item to wishlist", error: err.message });
+    isAdded = true;
   }
-};
 
-const toggleWishlist = async (req, res) => {
-  try {
-    const { productId, name, img, price } = req.body;
+  return res.json({
+    message: isAdded ? "Added to wishlist" : "Removed from wishlist",
+    items: wishlistDoc ? wishlistDoc.items : [],
+    isWishlisted: isAdded
+  });
+});
 
-    if (!productId) {
-      return res.status(400).json({ message: "Product ID is required" });
-    }
+const updateWishlist = asyncHandler(async (req, res) => {
+  const items = req.body.wishlist || req.body.items;
 
-    let wishlistDoc = await Wishlist.findOneAndUpdate(
-      { userId: req.user.id, "items.productId": productId },
-      { $pull: { items: { productId } } },
-      { returnDocument: "after" }
-    ).lean();
-
-    let isAdded = false;
-
-    if (wishlistDoc) {
-      isAdded = false;
-    } else {
-      wishlistDoc = await Wishlist.findOneAndUpdate(
-        { userId: req.user.id },
-        { $push: { items: { productId, name, img, price } } },
-        { returnDocument: "after", upsert: true }
-      ).lean();
-      isAdded = true;
-    }
-
-    return res.json({
-      message: isAdded ? "Added to wishlist" : "Removed from wishlist",
-      items: wishlistDoc ? wishlistDoc.items : [],
-      isWishlisted: isAdded
-    });
-  } catch (err) {
-    console.error("Toggle wishlist error:", err);
-    return res.status(500).json({ message: "Failed to toggle wishlist item", error: err.message });
+  if (!Array.isArray(items)) {
+    return res.status(400).json({ message: "Wishlist must be an array" });
   }
-};
 
-const updateWishlist = async (req, res) => {
-  try {
-    const items = req.body.wishlist || req.body.items;
+  const wishlistDoc = await Wishlist.findOneAndUpdate(
+    { userId: req.user.id },
+    { $set: { items } },
+    { returnDocument: "after", upsert: true }
+  ).lean();
 
-    if (!items || typeof items !== "object" || typeof items.length !== "number") {
-      return res.status(400).json({ message: "Wishlist must be an array" });
-    }
+  return res.json(wishlistDoc ? wishlistDoc.items : []);
+});
 
-    const wishlistDoc = await Wishlist.findOneAndUpdate(
-      { userId: req.user.id },
-      { $set: { items } },
-      { returnDocument: "after", upsert: true }
-    ).lean();
+const removeFromWishlist = asyncHandler(async (req, res) => {
+  const { productId } = req.params;
 
-    return res.json(wishlistDoc ? wishlistDoc.items : []);
-  } catch (err) {
-    console.error("Update wishlist error:", err);
-    return res.status(500).json({ message: "Failed to update wishlist", error: err.message });
-  }
-};
+  const wishlistDoc = await Wishlist.findOneAndUpdate(
+    { userId: req.user.id },
+    { $pull: { items: { $or: [{ _id: productId }, { productId }] } } },
+    { returnDocument: "after" }
+  ).lean();
 
-const removeFromWishlist = async (req, res) => {
-  try {
-    const { productId } = req.params;
+  return res.json(wishlistDoc ? wishlistDoc.items : []);
+});
 
-    const wishlistDoc = await Wishlist.findOneAndUpdate(
-      { userId: req.user.id },
-      { $pull: { items: { $or: [{ _id: productId }, { productId: productId }] } } },
-      { returnDocument: "after" }
-    ).lean();
+const clearWishlist = asyncHandler(async (req, res) => {
+  await Wishlist.findOneAndUpdate(
+    { userId: req.user.id },
+    { $set: { items: [] } },
+    { returnDocument: "after" }
+  ).lean();
 
-    return res.json(wishlistDoc ? wishlistDoc.items : []);
-  } catch (err) {
-    console.error("Remove from wishlist error:", err);
-    return res.status(500).json({
-      message: "Failed to remove item from wishlist",
-      error: err.message
-    });
-  }
-};
-
-const clearWishlist = async (req, res) => {
-  try {
-    await Wishlist.findOneAndUpdate(
-      { userId: req.user.id },
-      { $set: { items: [] } },
-      { returnDocument: "after" }
-    ).lean();
-
-    return res.json({ message: "Wishlist cleared successfullyY", items: [] });
-  } catch (err) {
-    console.error("Clear wishlist error:", err);
-    return res.status(500).json({ message: "Failed to clear wishlist", error: err.message });
-  }
-};
+  return res.json({ message: "Wishlist cleared successfully", items: [] });
+});
 
 module.exports = {
   getWishlist,

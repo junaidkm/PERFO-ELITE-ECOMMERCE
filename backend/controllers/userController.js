@@ -1,69 +1,50 @@
 const User = require("../models/User");
+const asyncHandler = require("../middleware/asyncHandler");
 
-const getUserProfile = async (req, res) => {
-  try {
-    const userId = req.params.id || req.user.id;
-    const user = await User.findById(userId).select("-password").lean();
+const getUserProfile = asyncHandler(async (req, res) => {
+  const userId = req.params.id || req.user.id;
+  const user = await User.findById(userId).select("-password").lean();
 
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    return res.json(user);
-  } catch (err) {
-    console.error("Get user profile error:", err);
-    return res.status(500).json({ message: "Failed to get user profile", error: err.message });
+  if (!user) {
+    return res.status(404).json({ message: "User not found" });
   }
-};
 
-const getAllUsers = async (req, res) => {
-  try {
-    const users = await User.find().select("-password").sort({ createdAt: -1 }).lean();
-    return res.json(users);
-  } catch (err) {
-    console.error("Get all users error:", err);
-    return res.status(500).json({ message: "Failed to fetch users", error: err.message });
+  return res.json(user);
+});
+
+const getAllUsers = asyncHandler(async (req, res) => {
+  const users = await User.find().select("-password").sort({ createdAt: -1 }).lean();
+  return res.json(users);
+});
+
+const updateUser = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const updateFields = { ...(req.body || {}) };
+  delete updateFields.password;
+
+  const user = await User.findByIdAndUpdate(
+    id,
+    { $set: updateFields },
+    { returnDocument: "after", runValidators: true }
+  ).select("-password").lean();
+
+  if (!user) {
+    return res.status(404).json({ message: "User not found" });
   }
-};
 
-const updateUser = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const updateFields = { ...(req.body || {}) };
-    delete updateFields.password;
+  return res.json(user);
+});
 
-    const user = await User.findByIdAndUpdate(
-      id,
-      { $set: updateFields },
-      { returnDocument: "after", runValidators: true }
-    ).select("-password").lean();
+const deleteUser = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const user = await User.findByIdAndDelete(id).lean();
 
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    return res.json(user);
-  } catch (err) {
-    console.error("Update user error:", err);
-    return res.status(500).json({ message: "Failed to update user", error: err.message });
+  if (!user) {
+    return res.status(404).json({ message: "User not found" });
   }
-};
 
-const deleteUser = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const user = await User.findByIdAndDelete(id).lean();
-
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    return res.json({ message: "User deleted successfully", id });
-  } catch (err) {
-    console.error("Delete user error:", err);
-    return res.status(500).json({ message: "Failed to delete user", error: err.message });
-  }
-};
+  return res.json({ message: "User deleted successfully", id });
+});
 
 module.exports = {
   getUserProfile,

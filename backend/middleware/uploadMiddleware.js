@@ -12,12 +12,25 @@ const storage = multer.diskStorage({
     cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
-  cb(null, `${Date.now()}-${file.originalname}`);
+    const ext = path.extname(file.originalname).toLowerCase();
+    cb(null, `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`);
   }
 });
 
+const fileFilter = (req, file, cb) => {
+  const allowedTypes = /jpeg|jpg|png|webp|gif/;
+  const mimeTypeMatch = allowedTypes.test(file.mimetype);
+  const extMatch = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+
+  if (mimeTypeMatch && extMatch) {
+    return cb(null, true);
+  }
+  cb(new Error("Only image files (jpeg, jpg, png, webp, gif) are allowed!"), false);
+};
+
 const upload = multer({
   storage,
+  fileFilter,
   limits: { fileSize: 5 * 1024 * 1024 }
 });
 
