@@ -30,8 +30,10 @@ const getAdminDashboardStats = asyncHandler(async (req, res) => {
     if (stat._id) stockCounts[stat._id] = stat.count;
   }
 
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  const today = new Date();
+  const sevenDaysAgo = new Date(today);
+  sevenDaysAgo.setUTCDate(sevenDaysAgo.getUTCDate() - 6);
+  sevenDaysAgo.setUTCHours(0, 0, 0, 0);
 
   const dailySalesAgg = await Order.aggregate([
     {
@@ -42,7 +44,7 @@ const getAdminDashboardStats = asyncHandler(async (req, res) => {
     },
     {
       $group: {
-        _id: { $dateToString: { format: "%b %d", date: "$createdAt" } },
+        _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
         sales: { $sum: "$total" }
       }
     }
@@ -54,11 +56,12 @@ const getAdminDashboardStats = asyncHandler(async (req, res) => {
   }
 
   const salesData = [];
-  for (let i = 0; i < 7; i++) {
-    const d = new Date();
-    d.setDate(d.getDate() - (6 - i));
-    const dateStr = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-    salesData[i] = { date: dateStr, sales: salesMap[dateStr] || 0 };
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(today);
+    d.setUTCDate(d.getUTCDate() - i);
+    const dateKey = d.toISOString().split("T")[0];
+    const dateStr = d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+    salesData.push({ date: dateStr, sales: salesMap[dateKey] || 0 });
   }
 
   return res.json({
