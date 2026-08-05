@@ -1,10 +1,10 @@
 import { api } from "./api"
 
-export const getCart = (userId) =>
-  api.get(`/cart/${userId}`)
+export const getCart = () =>
+  api.get("/cart")
 
-export const updateCart = (userId, cart) =>
-  api.put(`/cart/${userId}`, { cart })
+export const updateCart = (_userId, cart) =>
+  api.put("/cart", { cart })
 
 export const addItemToCart = (itemData) =>
   api.post("/cart", itemData)

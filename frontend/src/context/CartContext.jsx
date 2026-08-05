@@ -37,7 +37,7 @@ export const CartProvider = ({ children }) => {
 
     try {
       setLoading(true)
-      const { data } = await getCart(userId)
+      const { data } = await getCart()
       const itemsList = Array.isArray(data)
         ? data
         : data?.items || data?.cart || []
